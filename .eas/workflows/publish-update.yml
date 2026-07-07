@@ -1,0 +1,10 @@
+name: Publish dev update
+on:
+  push:
+    branches: [main]
+jobs:
+  update:
+    name: Publish update
+    type: update
+    params:
+      branch: development

@@ -1,0 +1,40 @@
+project_id = "yghjjviasafjknvmvljv"
+
+[functions.chat]
+verify_jwt = false
+
+[functions.voice-transcribe]
+verify_jwt = false
+
+[functions.voice-speak]
+verify_jwt = false
+
+[functions.health-openai]
+verify_jwt = false
+
+[functions.insights-generate]
+verify_jwt = false
+
+[functions.dashboard-summary]
+verify_jwt = false
+
+[functions.user-status]
+verify_jwt = false
+
+[functions.ai-welcome]
+verify_jwt = false
+
+[functions.seed-demo]
+verify_jwt = false
+
+[functions.seed-demo-maya]
+verify_jwt = false
+
+[functions.seed-demo-ava]
+verify_jwt = false
+
+[functions.stress-spending-detect]
+verify_jwt = false
+
+[functions.share-redirect]
+verify_jwt = false
