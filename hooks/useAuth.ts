@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import * as Linking from 'expo-linking';
 
 const supabase = createClient(
   process.env.EXPO_PUBLIC_SUPABASE_URL!,
@@ -48,5 +49,14 @@ export function useAuth() {
     await supabase.auth.signOut();
   };
 
-  return { user, loading, signUp, signIn, signOut };
+  const resetPassword = async (email: string) => {
+    const redirectUrl = Linking.createURL('reset-password');
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectUrl,
+    });
+    if (error) return { error: `${error.message} | STATUS: ${error.status} | CODE: ${error.code}` };
+    return { data: true };
+  };
+
+  return { user, loading, signUp, signIn, signOut, resetPassword };
 }
