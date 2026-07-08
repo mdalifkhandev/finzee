@@ -1,6 +1,7 @@
 // FinZee AI™ — Tab Navigator
 import { Tabs } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { Ionicons } from '@expo/vector-icons';
 import { Platform } from 'react-native';
 import { Colors } from '../../constants/theme';
 
@@ -13,6 +14,7 @@ export default function TabLayout() {
           headerShown: false,
           tabBarActiveTintColor: Colors.blue,
           tabBarInactiveTintColor: Colors.mute2,
+          tabBarShowLabel: true,
           tabBarStyle: {
             backgroundColor: 'rgba(255,255,255,0.97)',
             borderTopColor: 'rgba(0,0,0,0.04)',
@@ -35,12 +37,69 @@ export default function TabLayout() {
           },
         }}
       >
-        <Tabs.Screen name="home"    options={{ title: 'Home',    tabBarIcon: () => null }} />
-        <Tabs.Screen name="health"  options={{ title: 'Health',  tabBarIcon: () => null }} />
-        <Tabs.Screen name="coach"   options={{ title: 'Ask AI',  tabBarIcon: () => null }} />
-        <Tabs.Screen name="goals"   options={{ title: 'Goals',   tabBarIcon: () => null }} />
-        <Tabs.Screen name="pause"   options={{ title: 'Pause',   tabBarIcon: () => null }} />
-        <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: () => null }} />
+        <Tabs.Screen
+          name="home"
+          options={{
+            title: 'Home',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="home-outline" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="health"
+          options={{
+            title: 'Health',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="fitness-outline" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="coach"
+          options={{
+            title: 'Ask AI',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="sparkles-outline" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="goals"
+          options={{
+            title: 'Goals',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="trophy-outline" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="pause"
+          options={{
+            title: 'Pause',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="pause-circle-outline" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: 'Profile',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="person-outline" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="dashboard"
+          options={{
+            title: 'Dashboard',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="grid-outline" size={size} color={color} />
+            ),
+          }}
+        />
       </Tabs>
     </>
   );
