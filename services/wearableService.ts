@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { CONFIG } from '../constants/config';
 import type { HealthDailyMetric } from '../types';
+import { callFunction } from './api';
 
 export interface WearableMetrics {
   source:              'apple_health' | 'oura' | 'garmin' | 'fitbit' | 'google_fit' | 'mock';
@@ -64,10 +65,12 @@ export function getOuraAuthUrl(redirectUri: string): string {
 
 export async function exchangeOuraCode(code: string, redirectUri: string): Promise<boolean> {
   try {
-    const res = await fetch(`${CONFIG.API_BASE_URL}/api/wearables/oura/token`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, redirectUri }) });
-    const data = await res.json();
-    if (data.access_token) { await saveToken(KEYS.oura, data.access_token); return true; }
-    return false;
+    // The edge function exchanges the code and stores tokens server-side.
+    const data = await callFunction<{ connected?: boolean; access_token?: string }>(
+      'wearables-oura-token', { method: 'POST', body: { code, redirectUri } },
+    );
+    if (data.access_token) await saveToken(KEYS.oura, data.access_token);
+    return Boolean(data.connected || data.access_token);
   } catch (e) { console.error('[Oura] Token exchange error:', e); return false; }
 }
 
@@ -96,10 +99,9 @@ export async function fetchOuraMetrics(date: string): Promise<WearableMetrics | 
   } catch (e) { console.error('[Oura] Fetch error:', e); return null; }
 }
 
-export async function initiateGarminAuth(userId: string): Promise<string | null> {
+export async function initiateGarminAuth(_userId: string): Promise<string | null> {
   try {
-    const res = await fetch(`${CONFIG.API_BASE_URL}/api/wearables/garmin/auth-url`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) });
-    const data = await res.json();
+    const data = await callFunction<{ authUrl?: string }>('wearables-garmin-auth-url');
     return data.authUrl ?? null;
   } catch (e) { console.error('[Garmin] Auth URL error:', e); return null; }
 }
@@ -116,15 +118,24 @@ export async function fetchGarminMetrics(userId: string, date: string): Promise<
   } catch (e) { console.error('[Garmin] Fetch error:', e); return null; }
 }
 
-export async function fetchFitbitMetrics(userId: string, date: string): Promise<WearableMetrics | null> {
-  if (!CONFIG.API_BASE_URL) return getMockMetrics(date, 'fitbit');
+export async function fetchFitbitMetrics(_userId: string, date: string): Promise<WearableMetrics | null> {
   try {
-    const res = await fetch(`${CONFIG.API_BASE_URL}/api/wearables/fitbit/metrics?userId=${userId}&date=${date}`);
-    const data = await res.json();
-    if (!data) return null;
-    const metrics: WearableMetrics = { source: 'fitbit', date, steps: data.activities?.steps?.[0]?.value ?? 0, sleepHours: (data.sleep?.[0]?.minutesAsleep ?? 0) / 60, heartRate: data.activities?.heart?.[0]?.value?.restingHeartRate ?? 70, restingHeartRate: data.activities?.heart?.[0]?.value?.restingHeartRate ?? 60, caloriesBurned: data.activities?.calories?.[0]?.value ?? 0, activeMinutes: data.activities?.minutesFairlyActive?.[0]?.value ?? 0, stressIndicator: 'low' };
+    // The edge function returns a normalized shape (real Fitbit data or mock).
+    const data = await callFunction<{ metrics: any }>('wearables-fitbit-metrics', { query: { date } });
+    const m = data.metrics;
+    if (!m) return getMockMetrics(date, 'fitbit');
+    const metrics: WearableMetrics = {
+      source: 'fitbit', date,
+      steps: m.steps ?? 0,
+      sleepHours: m.sleep_hours ?? 0,
+      heartRate: m.heart_rate ?? 70,
+      restingHeartRate: m.resting_heart_rate ?? 60,
+      caloriesBurned: m.calories_burned ?? 0,
+      activeMinutes: m.active_minutes ?? 0,
+      stressIndicator: 'low',
+    };
     metrics.stressIndicator = inferStress(metrics); return metrics;
-  } catch (e) { console.error('[Fitbit] Fetch error:', e); return null; }
+  } catch (e) { console.error('[Fitbit] Fetch error:', e); return getMockMetrics(date, 'fitbit'); }
 }
 
 export async function fetchBestAvailableMetrics(userId: string, date: string): Promise<WearableMetrics> {

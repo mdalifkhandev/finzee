@@ -29,6 +29,23 @@ export function createAuthedServiceClient(authHeader: string | null) {
   return supabase;
 }
 
+// Resolves the authenticated user from the request. Returns { supabase, user }
+// on success, or { response } holding a 401 to return directly.
+export async function requireUser(req: Request) {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader) return { response: jsonResponse({ error: "Unauthorized" }, 401) };
+
+  const supabase = createAuthedServiceClient(authHeader);
+  const token = authHeader.replace("Bearer ", "");
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) return { response: jsonResponse({ error: "Unauthorized" }, 401) };
+
+  return { supabase, user };
+}
+
+export const optionsResponse = () =>
+  new Response(null, { headers: corsHeaders });
+
 export function createAnonClient(authHeader: string | null) {
   const supabaseUrl = getEnv("SUPABASE_URL");
   const anonKey = getEnv("SUPABASE_ANON_KEY");

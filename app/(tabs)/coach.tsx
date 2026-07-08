@@ -9,6 +9,7 @@ import { Colors, Shadow, Radius, Gradients } from '../../constants/theme';
 import FinZeeLogo from '../../components/FinZeeLogo';
 import { useAuth } from '../../hooks/useAuth';
 import { CONFIG } from '../../constants/config';
+import { callFunction } from '../../services/api';
 import type { AICoachResponse } from '../../types';
 
 interface Message { id: string; role: 'ai' | 'user'; text: string; ts: Date; }
@@ -61,11 +62,10 @@ export default function CoachScreen() {
         await new Promise(r => setTimeout(r, 1400));
         aiText = DEV_RESPONSES[Math.floor(Math.random() * DEV_RESPONSES.length)];
       } else {
-        const res = await fetch(`${CONFIG.API_BASE_URL}/api/ai/coach`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userQuestion: trimmed, userId: user.id, spendingSummary: { discretionaryPct: 78, budgetRemaining: 1200 }, recentInsights: ['Stress spend on Tuesday', 'Sleep below 7hrs 3 nights this week'] }),
+        const data = await callFunction<AICoachResponse>('ai-coach', {
+          method: 'POST',
+          body: { userQuestion: trimmed, spendingSummary: { discretionaryPct: 78, budgetRemaining: 1200 }, recentInsights: ['Stress spend on Tuesday', 'Sleep below 7hrs 3 nights this week'] },
         });
-        const data: AICoachResponse = await res.json();
         aiText = data.coachingResponse;
       }
       setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'ai', text: aiText, ts: new Date() }]);

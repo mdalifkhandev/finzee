@@ -1,5 +1,6 @@
 import type { HealthDailyMetric } from '../types';
 import { CONFIG } from '../constants/config';
+import { callFunction } from './api';
 
 const DEV_METRIC: HealthDailyMetric = {
   userId: 'dev',
@@ -22,8 +23,19 @@ export async function getDailyMetrics(userId: string, date: string): Promise<Hea
     return { ...DEV_METRIC, userId, date };
   }
   try {
-    const res = await fetch(`${CONFIG.API_BASE_URL}/api/health/metrics?userId=${userId}&date=${date}`);
-    return res.json();
+    const data = await callFunction<{ metrics: any }>('health-metrics', { query: { date } });
+    const m = Array.isArray(data.metrics) ? data.metrics[0] : data.metrics;
+    if (!m) return null;
+    return {
+      userId,
+      date: m.date ?? date,
+      sleepHours: Number(m.sleep_hours) || 0,
+      steps: Number(m.steps) || 0,
+      heartRate: Number(m.heart_rate) || 0,
+      restingHeartRate: Number(m.resting_heart_rate) || 0,
+      stressIndicator: (m.stress_indicator ?? 'moderate') as HealthDailyMetric['stressIndicator'],
+      hrvMs: m.hrv_ms != null ? Number(m.hrv_ms) : undefined,
+    };
   } catch {
     return null;
   }

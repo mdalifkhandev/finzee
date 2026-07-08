@@ -1,5 +1,6 @@
 import type { Transaction } from '../types';
 import { CONFIG } from '../constants/config';
+import { callFunction } from './api';
 
 const DEV_TRANSACTIONS: Transaction[] = [
   { id: 't1', userId: 'dev', amount: 149, merchant: 'Nike.com', category: 'Shopping', date: '2026-06-10', isDiscretionary: true },
@@ -14,10 +15,19 @@ export async function fetchTransactions(userId: string): Promise<Transaction[]> 
     await new Promise(r => setTimeout(r, 300));
     return DEV_TRANSACTIONS.map(t => ({ ...t, userId }));
   }
-  const res = await fetch(`${CONFIG.API_BASE_URL}/api/plaid/transactions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId }),
-  });
-  return res.json();
+  const data = await callFunction<{ transactions: any[] }>('plaid-transactions');
+  return (data.transactions ?? []).map(t => ({
+    id: String(t.id),
+    userId,
+    amount: Number(t.amount),
+    merchant: t.merchant,
+    category: t.category,
+    date: t.date,
+    isDiscretionary: Boolean(t.is_discretionary),
+  }));
+}
+
+/** Creates a Plaid Link token (server-side) to open Plaid Link on the client. */
+export async function createLinkToken(): Promise<{ link_token: string; source: string }> {
+  return callFunction('plaid-link-token', { method: 'POST', body: {} });
 }
