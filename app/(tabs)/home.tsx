@@ -46,6 +46,8 @@ const barStyles = StyleSheet.create({
   lbl: { fontSize: 9, fontWeight: '700', color: Colors.mute2 },
 });
 
+const TAB_BAR_SPACING = Platform.OS === 'ios' ? 50 : 30;
+
 export default function HomeScreen() {
   const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
@@ -78,7 +80,10 @@ export default function HomeScreen() {
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[styles.content, styles.scrollContent]}
+        showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={Colors.blue} />}>
 
         <LinearGradient colors={['#06080f', '#0f172a', '#1a2444']} style={styles.hero}>
@@ -194,7 +199,8 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   root:         { flex: 1, backgroundColor: Colors.bg },
   scroll:       { flex: 1 },
-  content:      { flexGrow: 1 },
+  content:      { flexGrow: 1, },
+  scrollContent:{ paddingBottom: TAB_BAR_SPACING },
   hero:         { paddingTop: Platform.OS === 'ios' ? 56 : 36, paddingBottom: 24, paddingHorizontal: 20 },
   heroTop:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 },
   greeting:     { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.55)' },

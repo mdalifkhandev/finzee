@@ -26,6 +26,11 @@
         "backgroundColor": "#06080f"
       }
     },
+    "androidStatusBar": {
+      "backgroundColor": "#06080f",
+      "barStyle": "light-content",
+      "translucent": false
+    },
     "plugins": [
       "expo-router",
       "expo-secure-store",

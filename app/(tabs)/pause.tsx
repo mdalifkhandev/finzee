@@ -14,6 +14,7 @@ const DEV_ITEMS: PauseListItem[] = [
   { id: 'p1', userId: 'dev', itemName: 'Designer Handbag', price: 890, category: 'Shopping · Luxury', sourceUrl: '', reason: 'Wanted this for months — bought it after a really stressful week.', createdAt: new Date(Date.now() - 5 * 3600000).toISOString(), reminderDueAt: new Date(Date.now() + 19 * 3600000).toISOString(), status: 'pending' },
   { id: 'p2', userId: 'dev', itemName: 'Standing Desk', price: 449, category: 'Home Office · Productivity', sourceUrl: '', reason: 'My back really hurts — this feels necessary right now.', createdAt: new Date(Date.now() - 17 * 3600000).toISOString(), reminderDueAt: new Date(Date.now() + 7 * 3600000).toISOString(), status: 'pending' },
 ];
+const TAB_BAR_SPACING = Platform.OS === 'ios' ? 50 : 30;
 
 function useCountdown(targetDate: string) {
   const [remaining, setRemaining] = useState('');
@@ -95,7 +96,10 @@ export default function PauseScreen() {
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         <LinearGradient colors={['#064e3b', '#065f46', '#059669']} style={styles.hero}>
           <View style={styles.heroBar}>
             <View><Text style={styles.heroEye}>FinZee AI™</Text><Text style={styles.heroTitle}>Pause List ⏸</Text><Text style={styles.heroSub}>Think before you spend</Text></View>
@@ -132,6 +136,7 @@ export default function PauseScreen() {
 
 const styles = StyleSheet.create({
   root:          { flex: 1, backgroundColor: Colors.bg },
+  scrollContent: { paddingBottom: TAB_BAR_SPACING },
   hero:          { paddingTop: Platform.OS === 'ios' ? 56 : 36, paddingBottom: 24, paddingHorizontal: 20 },
   heroBar:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 },
   heroEye:       { fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },

@@ -53,6 +53,8 @@ function StressBar({ h, color, day }: { h: number; color: string; day: string })
   );
 }
 
+const TAB_BAR_SPACING = Platform.OS === 'ios' ? 50 : 30;
+
 export default function HealthScreen() {
   const { user } = useAuth();
   const [metrics, setMetrics]   = useState<HealthDailyMetric | null>(null);
@@ -79,7 +81,10 @@ export default function HealthScreen() {
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         <LinearGradient colors={['#0f172a', '#1e1b4b', '#4c1d95']} style={styles.hero}>
           <View style={styles.heroBar}>
             <View>
@@ -172,6 +177,7 @@ export default function HealthScreen() {
 
 const styles = StyleSheet.create({
   root:          { flex: 1, backgroundColor: Colors.bg },
+  scrollContent: { paddingBottom: TAB_BAR_SPACING },
   hero:          { paddingTop: Platform.OS === 'ios' ? 56 : 36, paddingBottom: 22, paddingHorizontal: 20 },
   heroBar:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
   heroEye:       { fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 },

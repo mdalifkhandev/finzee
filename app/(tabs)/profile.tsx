@@ -8,6 +8,7 @@ import FinZeeLogo from '../../components/FinZeeLogo';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../services/supabaseClient';
 import { CONFIG } from '../../constants/config';
+const TAB_BAR_SPACING = Platform.OS === 'ios' ? 50 : 30;
 
 function SectionHeader({ title }: { title: string }) {
   return <Text style={styles.sectionHeader}>{title}</Text>;
@@ -65,7 +66,10 @@ export default function ProfileScreen() {
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         <LinearGradient colors={['#06080f', '#0f172a', '#1a2444']} style={styles.hero}>
           <View style={styles.heroBar}>
             <View style={styles.heroLeft}>
@@ -143,6 +147,7 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   root:          { flex: 1, backgroundColor: Colors.bg },
+  scrollContent: { paddingBottom: TAB_BAR_SPACING },
   hero:          { paddingTop: Platform.OS === 'ios' ? 56 : 36, paddingBottom: 24, paddingHorizontal: 20 },
   heroBar:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
   heroLeft:      { flexDirection: 'row', alignItems: 'center', gap: 14 },

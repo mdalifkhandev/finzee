@@ -27,6 +27,7 @@ const DEV_RESPONSES = [
   "For Japan — you need $1,500 more. At $300/month you're 5 months out. I can find $50/week in your current spend to get there faster.",
   "On days you hit 8,000+ steps, your impulse purchases drop by 62%. Your body and wallet are more connected than you think.",
 ];
+const TAB_BAR_SPACING = Platform.OS === 'ios' ? 50 : 30;
 
 export default function CoachScreen() {
   const { user } = useAuth();
@@ -88,7 +89,13 @@ export default function CoachScreen() {
         <FinZeeLogo variant="blue" width={80} />
       </View>
 
-      <ScrollView ref={scrollRef} style={styles.messages} contentContainerStyle={styles.messagesContent} showsVerticalScrollIndicator={false} onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}>
+      <ScrollView
+        ref={scrollRef}
+        style={styles.messages}
+        contentContainerStyle={styles.messagesContent}
+        showsVerticalScrollIndicator={false}
+        onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+      >
         {messages.map(msg => (
           <View key={msg.id} style={[styles.msgRow, msg.role === 'user' ? styles.msgRowUser : styles.msgRowAi]}>
             {msg.role === 'ai' && <View style={styles.msgAiAvatar}><LinearGradient colors={Gradients.blue} style={styles.msgAiAvatarGrad}><Text style={{ fontSize: 12 }}>◈</Text></LinearGradient></View>}
@@ -134,7 +141,7 @@ const styles = StyleSheet.create({
   headerName:      { fontSize: 15, fontWeight: '800', color: Colors.ink, letterSpacing: -0.3 },
   headerStatus:    { fontSize: 11, fontWeight: '600', color: Colors.green, marginTop: 1 },
   messages:        { flex: 1 },
-  messagesContent: { padding: 16, gap: 14, paddingBottom: 8 },
+  messagesContent: { padding: 16, gap: 14, paddingBottom: TAB_BAR_SPACING },
   msgRow:          { flexDirection: 'row', alignItems: 'flex-end', gap: 10 },
   msgRowAi:        { justifyContent: 'flex-start' },
   msgRowUser:      { justifyContent: 'flex-end' },

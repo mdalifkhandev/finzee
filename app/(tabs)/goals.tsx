@@ -23,6 +23,7 @@ const DEFAULT_GOALS: Goal[] = [
 ];
 
 const EMOJI_OPTIONS = ['🏠','✈️','🚗','🎓','💍','🛡️','💻','🏻','🌴','💰','🎯','🏦'];
+const TAB_BAR_SPACING = Platform.OS === 'ios' ? 50 : 30;
 
 function GoalCard({ goal, onCelebrate }: { goal: Goal; onCelebrate: (g: Goal) => void }) {
   const pct      = Math.min(Math.round((goal.current / goal.target) * 100), 100);
@@ -147,7 +148,10 @@ export default function GoalsScreen() {
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         <LinearGradient colors={['#06080f', '#0f172a', '#1a2444']} style={styles.hero}>
           <View style={styles.heroBar}>
             <View><Text style={styles.heroEye}>FinZee AI™</Text><Text style={styles.heroTitle}>Financial Goals</Text><Text style={styles.heroSub}>Your future, funded one goal at a time</Text></View>
@@ -182,6 +186,7 @@ export default function GoalsScreen() {
 
 const styles = StyleSheet.create({
   root:         { flex: 1, backgroundColor: Colors.bg },
+  scrollContent:{ paddingBottom: TAB_BAR_SPACING },
   hero:         { paddingTop: Platform.OS === 'ios' ? 56 : 36, paddingBottom: 24, paddingHorizontal: 20 },
   heroBar:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 },
   heroEye:      { fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },

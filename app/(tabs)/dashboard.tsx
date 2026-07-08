@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Platform,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +13,8 @@ import { Link } from 'expo-router';
 import { usePurchaseIntervention } from '../../hooks/use-purchase-intervention';
 import { PurchaseInterventionModal } from '../../components/PurchaseInterventionModal';
 import { HealthConnectCard } from '../../components/HealthConnectCard';
+
+const TAB_BAR_SPACING = Platform.OS === 'ios' ? 50 : 30;
 
 export default function Dashboard() {
   const [interventionVisible, setInterventionVisible] = useState(false);
@@ -42,7 +45,7 @@ export default function Dashboard() {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <StatusBar style="light" />
 
       {/* Header */}
@@ -156,6 +159,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0D1117',
+  },
+  content: {
+    paddingBottom: TAB_BAR_SPACING,
   },
   header: {
     padding: 24,
