@@ -15,7 +15,7 @@ let _client: SupabaseClient | null = null;
 function client(): SupabaseClient {
   if (!_client) {
     _client = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
-      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+      auth: { flowType: 'pkce', persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
     });
   }
   return _client;

@@ -90,6 +90,7 @@ if (CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY) {
       CONFIG.SUPABASE_ANON_KEY,
       {
         auth: {
+          flowType: 'pkce',
           // Required for React Native / Expo: disable browser-only storage
           persistSession: true,
           autoRefreshToken: true,

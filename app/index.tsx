@@ -1,6 +1,6 @@
 // FinZee AI™ — Splash / Entry Screen
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, Animated, Dimensions, StatusBar, Linking } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Colors, Typography } from '../constants/theme';
@@ -15,6 +15,7 @@ export default function SplashScreen() {
   const opacityAnim  = useRef(new Animated.Value(0)).current;
   const taglineAnim  = useRef(new Animated.Value(0)).current;
   const glowAnim     = useRef(new Animated.Value(0.6)).current;
+  const recoveryHandledRef = useRef(false);
 
   useEffect(() => {
     StatusBar.setBarStyle('light-content');
@@ -29,7 +30,17 @@ export default function SplashScreen() {
     setTimeout(() => {
       Animated.timing(taglineAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
     }, 400);
-    const timer = setTimeout(() => {
+
+    const timer = setTimeout(async () => {
+      const initialUrl = await Linking.getInitialURL();
+      const isRecoveryLink = initialUrl?.includes('reset-password')
+        || initialUrl?.includes('type=recovery');
+      if (isRecoveryLink) {
+        recoveryHandledRef.current = true;
+        router.replace('/reset-password');
+        return;
+      }
+      if (recoveryHandledRef.current) return;
       if (!loading) router.replace(user ? '/(tabs)/home' : '/login');
     }, 2800);
     return () => clearTimeout(timer);

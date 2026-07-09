@@ -4,7 +4,8 @@ import { callFunction } from '../services/api';
 
 const supabase = createClient(
   process.env.EXPO_PUBLIC_SUPABASE_URL!,
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
+  { auth: { flowType: 'pkce' } }
 );
 
 export function useAuth() {
@@ -55,13 +56,10 @@ export function useAuth() {
 
   const resetPassword = async (email: string) => {
     try {
-      await callFunction('auth-reset-password', {
-        method: 'POST',
-        body: {
-          email,
-          redirect_to: 'finzeeai://reset-password',
-        },
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'finzeeai://reset-password',
       });
+      if (error) return { error: error.message };
       return { data: true };
     } catch (error: any) {
       return { error: error?.message ? String(error.message) : 'Failed to send reset link' };
