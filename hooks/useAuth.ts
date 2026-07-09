@@ -1,12 +1,6 @@
 import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../services/supabaseClient';
 import { callFunction } from '../services/api';
-
-const supabase = createClient(
-  process.env.EXPO_PUBLIC_SUPABASE_URL!,
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
-  { auth: { flowType: 'pkce' } }
-);
 
 export function useAuth() {
   const [user, setUser] = useState<any>(null);

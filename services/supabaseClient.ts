@@ -15,6 +15,7 @@
  *   - .env is listed in .gitignore and will not be committed.
  */
 
+import * as SecureStore from 'expo-secure-store';
 import { CONFIG } from '../constants/config';
 
 // ---------------------------------------------------------------------------
@@ -36,12 +37,12 @@ type TableBuilder = {
   upsert: (data: any) => Promise<{ data: any; error: null }>;
 };
 
-type SupabaseClient = {
-  auth: {
-    getUser: () => Promise<{ data: { user: null }; error: null }>;
-    signOut: () => Promise<{ error: null }>;
-  };
-  from: (table: string) => TableBuilder;
+type SupabaseClient = any;
+
+const authStorage = {
+  getItem: (key: string) => SecureStore.getItemAsync(key),
+  setItem: (key: string, value: string) => SecureStore.setItemAsync(key, value),
+  removeItem: (key: string) => SecureStore.deleteItemAsync(key),
 };
 
 // ---------------------------------------------------------------------------
@@ -50,8 +51,16 @@ type SupabaseClient = {
 // ---------------------------------------------------------------------------
 const createStub = (): SupabaseClient => ({
   auth: {
+    getSession: async () => ({ data: { session: null }, error: null }),
     getUser: async () => ({ data: { user: null }, error: null }),
+    signInWithPassword: async () => ({ data: null, error: null }),
     signOut: async () => ({ error: null }),
+    resetPasswordForEmail: async () => ({ data: null, error: null }),
+    setSession: async () => ({ data: null, error: null }),
+    exchangeCodeForSession: async () => ({ data: null, error: null }),
+    verifyOtp: async () => ({ data: { session: null }, error: null }),
+    updateUser: async () => ({ data: null, error: null }),
+    onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
   },
   from: (_table: string): TableBuilder => ({
     select: (_cols?: string) => ({
@@ -91,7 +100,8 @@ if (CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY) {
       {
         auth: {
           flowType: 'pkce',
-          // Required for React Native / Expo: disable browser-only storage
+          storage: authStorage,
+          storageKey: 'finzeeai-auth-token',
           persistSession: true,
           autoRefreshToken: true,
           detectSessionInUrl: false,

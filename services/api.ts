@@ -7,19 +7,8 @@
  *
  * Functions live at `${SUPABASE_URL}/functions/v1/<name>`.
  */
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { CONFIG } from '../constants/config';
-
-let _client: SupabaseClient | null = null;
-
-function client(): SupabaseClient {
-  if (!_client) {
-    _client = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
-      auth: { flowType: 'pkce', persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
-    });
-  }
-  return _client;
-}
+import { supabase } from './supabaseClient';
 
 export interface CallOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
@@ -34,7 +23,7 @@ export interface CallOptions {
 export async function callFunction<T = any>(name: string, opts: CallOptions = {}): Promise<T> {
   const { method = 'GET', body, query } = opts;
 
-  const { data: { session } } = await client().auth.getSession();
+  const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token ?? CONFIG.SUPABASE_ANON_KEY;
 
   let url = `${CONFIG.SUPABASE_URL}/functions/v1/${name}`;
