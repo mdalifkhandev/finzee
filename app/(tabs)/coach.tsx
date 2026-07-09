@@ -4,6 +4,7 @@ import {
   View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity,
   KeyboardAvoidingView, Platform, Animated, StatusBar,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Shadow, Radius, Gradients } from '../../constants/theme';
 import FinZeeLogo from '../../components/FinZeeLogo';
@@ -125,7 +126,9 @@ export default function CoachScreen() {
       <View style={styles.inputBar}>
         <TextInput style={styles.input} value={input} onChangeText={setInput} placeholder="Ask FinZee anything…" placeholderTextColor={Colors.mute2} returnKeyType="send" multiline onSubmitEditing={() => sendMessage(input)} />
         <TouchableOpacity style={[styles.sendBtn, !input.trim() && { opacity: 0.5 }]} onPress={() => sendMessage(input)} disabled={!input.trim()}>
-          <LinearGradient colors={Gradients.blue} style={styles.sendBtnGrad}><Text style={styles.sendArrow}>›</Text></LinearGradient>
+          <LinearGradient colors={Gradients.blue} style={styles.sendBtnGrad}>
+            <Ionicons name="arrow-forward" size={24} color="#fff" />
+          </LinearGradient>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -157,9 +160,8 @@ const styles = StyleSheet.create({
   quickContent:    { paddingHorizontal: 14, paddingVertical: 6, gap: 6 },
   quickChip:       { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.full, paddingHorizontal: 14, paddingVertical: 7 },
   quickChipText:   { fontSize: 11, fontWeight: '700', color: Colors.ink3 },
-  inputBar:        { flexDirection: 'row', gap: 8, alignItems: 'flex-end', padding: 12, paddingBottom: Platform.OS === 'ios' ? 28 : 14, backgroundColor: Colors.surface, borderTopWidth: 1, borderTopColor: Colors.border2 },
-  input:           { flex: 1, backgroundColor: Colors.bg, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 22, paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, color: Colors.ink, maxHeight: 100 },
-  sendBtn:         { width: 42, height: 42, borderRadius: 21, flexShrink: 0 },
-  sendBtnGrad:     { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
-  sendArrow:       { color: '#fff', fontSize: 24, marginLeft: 2 },
+  inputBar:        { flexDirection: 'row', gap: 8, alignItems: 'center', paddingHorizontal: 12, paddingTop: 12, paddingBottom: Platform.OS === 'ios' ? 20 : 12, backgroundColor: Colors.surface, borderTopWidth: 1, borderTopColor: Colors.border2 },
+  input:           { flex: 1, backgroundColor: Colors.bg, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 22, paddingHorizontal: 16, paddingVertical: 11, fontSize: 14, color: Colors.ink, maxHeight: 100 },
+  sendBtn:         { width: 48, height: 48, borderRadius: 24, flexShrink: 0 },
+  sendBtnGrad:     { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
 });
