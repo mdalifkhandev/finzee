@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import * as Linking from 'expo-linking';
+import { callFunction } from '../services/api';
 
 const supabase = createClient(
   process.env.EXPO_PUBLIC_SUPABASE_URL!,
@@ -25,15 +25,19 @@ export function useAuth() {
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName }
-      }
-    });
-    if (error) return { error: `${error.message} | STATUS: ${error.status} | CODE: ${error.code}` };
-    return { data };
+    try {
+      const data = await callFunction('auth-signup', {
+        method: 'POST',
+        body: {
+          email,
+          password,
+          full_name: fullName,
+        },
+      });
+      return { data };
+    } catch (error: any) {
+      return { error: error?.message ? String(error.message) : 'Failed to sign up' };
+    }
   };
 
   const signIn = async (email: string, password: string) => {
@@ -50,12 +54,18 @@ export function useAuth() {
   };
 
   const resetPassword = async (email: string) => {
-    const redirectUrl = Linking.createURL('reset-password');
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: redirectUrl,
-    });
-    if (error) return { error: `${error.message} | STATUS: ${error.status} | CODE: ${error.code}` };
-    return { data: true };
+    try {
+      await callFunction('auth-reset-password', {
+        method: 'POST',
+        body: {
+          email,
+          redirect_to: 'finzeeai://reset-password',
+        },
+      });
+      return { data: true };
+    } catch (error: any) {
+      return { error: error?.message ? String(error.message) : 'Failed to send reset link' };
+    }
   };
 
   return { user, loading, signUp, signIn, signOut, resetPassword };

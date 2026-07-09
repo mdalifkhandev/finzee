@@ -50,6 +50,7 @@ export default function SignUpScreen() {
       Alert.alert('Sign up failed', result.error?.message || String(result.error) || 'Unknown error');
       return;
     }
+    const session = result.data?.session ?? null;
     try {
       const { data: { user } } = await supabase.auth.getUser();
       console.log('[SignUp] current user', user?.id ?? null);
@@ -62,9 +63,15 @@ export default function SignUpScreen() {
       }
     } catch (e) { console.warn('[SignUp] consent log error:', e); }
     setLoading(false);
-    Alert.alert('Check your email ✉️', 'We sent you a confirmation link. Click it to activate your account.',
-      [{ text: 'OK', onPress: () => router.replace('/login') }]
-    );
+    if (session) {
+      Alert.alert('Account created', 'Your account is ready. You can sign in now.',
+        [{ text: 'OK', onPress: () => router.replace('/login') }]
+      );
+    } else {
+      Alert.alert('Check your email ✉️', 'We sent you a confirmation link. Click it to activate your account.',
+        [{ text: 'OK', onPress: () => router.replace('/login') }]
+      );
+    }
   }
 
   return (

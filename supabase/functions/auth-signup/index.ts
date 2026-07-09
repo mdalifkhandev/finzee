@@ -6,14 +6,17 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { email, password, full_name } = await req.json();
+    const { email, password, full_name, redirect_to } = await req.json();
     if (!email || !password) return jsonResponse({ error: "Email and password are required" }, 400);
 
     const supabase = createAnonClient(req.headers.get("Authorization"));
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name } },
+      options: {
+        data: { full_name },
+        emailRedirectTo: redirect_to || `${Deno.env.get("APP_SCHEME") || "finzeeai"}://login`,
+      },
     });
 
     if (error) return jsonResponse({ error: error.message, code: error.code, status: error.status }, 400);
