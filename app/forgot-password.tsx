@@ -18,9 +18,15 @@ export default function ForgotPasswordScreen() {
 
   async function handleReset() {
     if (!email.trim()) { Alert.alert('Missing email', 'Please enter your email address.'); return; }
+    console.log('[ForgotPassword] handleReset called:', { email: email.trim() });
     setLoading(true);
     const result = await resetPassword(email.trim());
     setLoading(false);
+    console.log('[ForgotPassword] resetPassword result:', {
+      hasError: 'error' in result && !!result.error,
+      error: 'error' in result ? result.error : null,
+      hasData: 'data' in result && !!result.data,
+    });
     if ('error' in result && result.error) {
       Alert.alert('Error', result.error?.message || String(result.error) || 'Unknown error');
     } else {

@@ -10,6 +10,12 @@ import { Colors, Shadow, Radius, Gradients } from '../constants/theme';
 import FinZeeLogo from '../components/FinZeeLogo';
 import { supabase } from '../services/supabaseClient';
 
+function maskValue(value: string | null | undefined) {
+  if (!value) return null;
+  if (value.length <= 8) return `${value.slice(0, 2)}…${value.slice(-2)}`;
+  return `${value.slice(0, 4)}…${value.slice(-4)} (len=${value.length})`;
+}
+
 export default function ResetPasswordScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -22,10 +28,19 @@ export default function ResetPasswordScreen() {
   const recoveryHandledRef = useRef(false);
 
   async function persistRecoverySession(session: { access_token: string; refresh_token: string } | null | undefined) {
+    console.log('[ResetPassword] persistRecoverySession called:', {
+      hasSession: !!session,
+      accessToken: maskValue(session?.access_token),
+      refreshToken: maskValue(session?.refresh_token),
+    });
     if (!session) return false;
     const { error } = await supabase.auth.setSession({
       access_token: session.access_token,
       refresh_token: session.refresh_token,
+    });
+    console.log('[ResetPassword] setSession result:', {
+      ok: !error,
+      error: error?.message || null,
     });
     if (error) throw error;
     return true;
@@ -33,8 +48,14 @@ export default function ResetPasswordScreen() {
 
   useEffect(() => {
     let mounted = true;
+    console.log('[ResetPassword] screen mounted');
 
     const applySessionFromUrl = async (url?: string | null) => {
+      console.log('[ResetPassword] applySessionFromUrl called:', {
+        hasUrl: !!url,
+        urlPreview: url ? url.slice(0, 180) : null,
+        handledAlready: recoveryHandledRef.current,
+      });
       if (!url) return;
       if (mounted) setRecoveryUrl(url);
       if (mounted) setLinkError(null);
@@ -53,11 +74,16 @@ export default function ResetPasswordScreen() {
         const errorDescription = params.get('error_description');
         const error = params.get('error');
         console.log('[ResetPassword] parsed params:', {
+          baseUrl,
           code,
           tokenHash,
           type,
           hasAccessToken: !!accessToken,
           hasRefreshToken: !!refreshToken,
+          error,
+          errorCode,
+          errorDescription,
+          fragmentPreview: fragment ? fragment.slice(0, 120) : null,
         });
 
         if (error || errorCode || errorDescription) {
@@ -70,33 +96,33 @@ export default function ResetPasswordScreen() {
             setLinkError(message);
             setReady(false);
           }
+          console.warn('[ResetPassword] link error detected:', {
+            message,
+            error,
+            errorCode,
+            errorDescription,
+          });
           return;
         }
 
         if (type === 'recovery' && accessToken && refreshToken) {
+          console.log('[ResetPassword] recovery token pair detected. Setting session from access/refresh token.');
           await persistRecoverySession({ access_token: accessToken, refresh_token: refreshToken });
           if (mounted) {
             recoveryHandledRef.current = true;
             setReady(true);
           }
+          console.log('[ResetPassword] recovery session ready via access_token/refresh_token');
           return;
         }
 
         if (code) {
+          console.log('[ResetPassword] auth code detected, exchanging code for session:', maskValue(code));
           const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) throw error;
-          await persistRecoverySession(data.session);
-          if (mounted) {
-            recoveryHandledRef.current = true;
-            setReady(true);
-          }
-          return;
-        }
-
-        if (tokenHash && type === 'recovery') {
-          const { data, error } = await supabase.auth.verifyOtp({
-            token_hash: tokenHash,
-            type: 'recovery',
+          console.log('[ResetPassword] exchangeCodeForSession result:', {
+            ok: !error,
+            hasSession: !!data?.session,
+            error: error?.message || null,
           });
           if (error) throw error;
           await persistRecoverySession(data.session);
@@ -104,25 +130,58 @@ export default function ResetPasswordScreen() {
             recoveryHandledRef.current = true;
             setReady(true);
           }
+          console.log('[ResetPassword] recovery session ready via code');
           return;
         }
+
+        if (tokenHash && type === 'recovery') {
+          console.log('[ResetPassword] token_hash detected, verifying OTP:', maskValue(tokenHash));
+          const { data, error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: 'recovery',
+          });
+          console.log('[ResetPassword] verifyOtp result:', {
+            ok: !error,
+            hasSession: !!data?.session,
+            error: error?.message || null,
+          });
+          if (error) throw error;
+          await persistRecoverySession(data.session);
+          if (mounted) {
+            recoveryHandledRef.current = true;
+            setReady(true);
+          }
+          console.log('[ResetPassword] recovery session ready via token_hash');
+          return;
+        }
+
+        console.warn('[ResetPassword] no recognizable recovery params found on URL');
       } catch (error) {
         console.warn('[ResetPassword] link parse error:', error);
       } finally {
+        console.log('[ResetPassword] applySessionFromUrl finished');
         if (mounted) setCheckingLink(false);
       }
     };
 
     Linking.getInitialURL().then(async (url) => {
+      console.log('[ResetPassword] Linking.getInitialURL result:', url ? url.slice(0, 180) : null);
       await applySessionFromUrl(url);
       if (mounted) setCheckingLink(false);
     });
 
     const subscription = Linking.addEventListener('url', ({ url }) => {
+      console.log('[ResetPassword] Linking url event received:', url ? url.slice(0, 180) : null);
       void applySessionFromUrl(url);
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('[ResetPassword] supabase.auth.getSession result on mount:', {
+        hasSession: !!session,
+        hasAccessToken: !!session?.access_token,
+        userId: session?.user?.id || null,
+        recoveryHandled: recoveryHandledRef.current,
+      });
       if (mounted) {
         if (recoveryHandledRef.current) return;
         setReady(!!session);
@@ -137,6 +196,15 @@ export default function ResetPasswordScreen() {
   }, []);
 
   async function handleUpdate() {
+    console.log('[ResetPassword] handleUpdate called:', {
+      passwordLength: password.length,
+      confirmPasswordLength: confirmPassword.length,
+      ready,
+      checkingLink,
+      done,
+      recoveryHandled: recoveryHandledRef.current,
+      recoveryUrlPreview: recoveryUrl ? recoveryUrl.slice(0, 180) : null,
+    });
     if (!password.trim() || !confirmPassword.trim()) {
       Alert.alert('Missing password', 'Please enter and confirm your new password.');
       return;
@@ -149,6 +217,11 @@ export default function ResetPasswordScreen() {
     setLoading(true);
     const sessionReady = await (async () => {
       const { data: { session } } = await supabase.auth.getSession();
+      console.log('[ResetPassword] handleUpdate session check #1:', {
+        hasSession: !!session,
+        hasAccessToken: !!session?.access_token,
+        userId: session?.user?.id || null,
+      });
       if (session) return true;
       if (recoveryUrl) {
         try {
@@ -160,37 +233,70 @@ export default function ResetPasswordScreen() {
           const code = params.get('code');
           const accessToken = params.get('access_token');
           const refreshToken = params.get('refresh_token');
+          console.log('[ResetPassword] handleUpdate parsed recovery url:', {
+            baseUrl,
+            tokenHash: maskValue(tokenHash),
+            type,
+            code: maskValue(code),
+            hasAccessToken: !!accessToken,
+            hasRefreshToken: !!refreshToken,
+          });
 
           if (type === 'recovery' && accessToken && refreshToken) {
+            console.log('[ResetPassword] handleUpdate using access/refresh token from recovery URL');
             await persistRecoverySession({ access_token: accessToken, refresh_token: refreshToken });
           } else if (code) {
+            console.log('[ResetPassword] handleUpdate exchanging code for session:', maskValue(code));
             const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+            console.log('[ResetPassword] handleUpdate exchange result:', {
+              ok: !error,
+              hasSession: !!data?.session,
+              error: error?.message || null,
+            });
             if (error) throw error;
             await persistRecoverySession(data.session);
           } else if (tokenHash) {
+            console.log('[ResetPassword] handleUpdate verifying token_hash:', maskValue(tokenHash));
             const { data, error } = await supabase.auth.verifyOtp({
               token_hash: tokenHash,
               type: (type as any) || 'recovery',
             });
+            console.log('[ResetPassword] handleUpdate verifyOtp result:', {
+              ok: !error,
+              hasSession: !!data?.session,
+              error: error?.message || null,
+            });
             if (error) throw error;
             await persistRecoverySession(data.session);
+          } else {
+            console.warn('[ResetPassword] handleUpdate found recoveryUrl but no session params');
           }
         } catch (error) {
           console.warn('[ResetPassword] ensure session error:', error);
         }
       }
       const { data: { session: latestSession } } = await supabase.auth.getSession();
+      console.log('[ResetPassword] handleUpdate session check #2:', {
+        hasSession: !!latestSession,
+        hasAccessToken: !!latestSession?.access_token,
+        userId: latestSession?.user?.id || null,
+      });
       if (latestSession) return true;
       return false;
     })();
 
     if (!sessionReady) {
+      console.warn('[ResetPassword] sessionReady=false; prompting user to reopen reset link');
       setLoading(false);
       Alert.alert('Reset link needed', 'Please reopen the password reset email link, then try again.');
       return;
     }
 
     const { error } = await supabase.auth.updateUser({ password });
+    console.log('[ResetPassword] updateUser result:', {
+      ok: !error,
+      error: error?.message || null,
+    });
     setLoading(false);
 
     if (error) {
@@ -199,6 +305,7 @@ export default function ResetPasswordScreen() {
     }
 
     setDone(true);
+    console.log('[ResetPassword] password update success');
   }
 
   return (
