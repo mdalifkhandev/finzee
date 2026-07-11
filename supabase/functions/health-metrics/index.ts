@@ -1,22 +1,8 @@
 // /health-metrics
-//   GET  — latest stored daily health metrics (or realistic mock if none).
+//   GET  — latest stored daily health metrics for the user.
 //   POST — upsert a day's metrics (used by the app after reading from HealthKit /
 //          Health Connect / a wearable sync). Body matches health_metrics columns.
 import { jsonResponse, optionsResponse, requireUser } from "../_shared.ts";
-
-function mockMetric(date: string) {
-  return {
-    date,
-    source: "mock",
-    sleep_hours: 6.2,
-    steps: 7420,
-    heart_rate: 72,
-    resting_heart_rate: 58,
-    hrv_ms: 42,
-    stress_indicator: "moderate",
-    readiness_score: 71,
-  };
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return optionsResponse();
@@ -44,9 +30,7 @@ Deno.serve(async (req) => {
       if (error) return jsonResponse({ error: error.message }, 500);
 
       if (!data || data.length === 0) {
-        const today = new Date().toISOString().slice(0, 10);
-        const metric = mockMetric(date ?? today);
-        return jsonResponse({ metrics: date ? metric : [metric], source: "mock" });
+        return jsonResponse({ metrics: date ? null : [], source: "db" });
       }
 
       return jsonResponse({ metrics: date ? data[0] : data, source: "db" });

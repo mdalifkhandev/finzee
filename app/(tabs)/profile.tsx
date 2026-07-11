@@ -38,9 +38,9 @@ export default function ProfileScreen() {
   const [consentHealth, setConsentHealth]       = useState(true);
   const [consentAI, setConsentAI]               = useState(true);
   const [consentPush, setConsentPush]           = useState(true);
-  const [wellnessScore, setWellnessScore]       = useState(78);
-  const [goalsActive, setGoalsActive]           = useState(3);
-  const [daysStreak, setDaysStreak]             = useState(12);
+  const [wellnessScore, setWellnessScore]       = useState(0);
+  const [goalsActive, setGoalsActive]           = useState(0);
+  const [daysStreak, setDaysStreak]             = useState(0);
 
   const firstName = user?.displayName?.split(' ')[0] || 'User';
   const initials  = user?.displayName?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
@@ -79,29 +79,23 @@ export default function ProfileScreen() {
       if (!user || CONFIG.DEV_MODE) return;
       try {
         const [summary, streak, status] = await Promise.all([
-          callFunction<any>('dashboard-summary', { method: 'GET' }),
+          callFunction<any>('savings-goals', { method: 'GET' }),
           callFunction<any>('impulse-streak', { method: 'GET' }),
-          callFunction<any>('user-status', { method: 'GET' }),
+          callFunction<any>('impulse-history', { method: 'GET', query: { status: 'pending' } }),
         ]);
 
         const goals = Array.isArray(summary?.goals) ? summary.goals : [];
-        const budgets = Array.isArray(summary?.budgets) ? summary.budgets : [];
-        const financial = summary?.summary ?? {};
-        const goalCount = Number(status?.counts?.goals ?? 0) || goals.length || summary?.financial_summary?.active_goals_count || 0;
+        const savedMtd = Number(summary?.total_saved ?? 0);
+        const goalCount = Number(summary?.count ?? goals.length ?? 0);
         const currentStreak = Number(streak?.current_streak_days ?? 0);
-        const savedMtd = Number(financial.saved_mtd ?? 0);
-        const spendingMtd = Number(financial.spending_mtd ?? 0);
-        const budgetUtil = budgets.length
-          ? budgets.reduce((sum: number, b: any) => sum + Number(b.pct ?? 0), 0) / budgets.length
-          : Number(summary?.financial_summary?.budget_utilization_pct ?? 0);
+        const totalPaused = Number(status?.summary?.pending ?? status?.summary?.total ?? 0);
 
         const liveScore = Math.max(0, Math.min(100, Math.round(
-          50
+          52
           + Math.min(goalCount * 4, 16)
           + Math.min(currentStreak, 12)
           + Math.min(savedMtd / 100, 12)
-          + Math.max(0, 10 - Math.min(budgetUtil / 10, 10))
-          - Math.min(spendingMtd / 500, 8)
+          - Math.min(totalPaused * 2, 10)
         )));
 
         if (mounted) {

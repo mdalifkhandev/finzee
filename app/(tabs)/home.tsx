@@ -10,9 +10,7 @@ import Svg, { Circle, Text as SvgText, Defs, LinearGradient as SvgGrad, Stop } f
 import { Colors, Shadow, Radius, Gradients } from '../../constants/theme';
 import FinZeeLogo from '../../components/FinZeeLogo';
 import { useAuth } from '../../hooks/useAuth';
-import { fetchTransactions } from '../../services/plaidClient';
-import { getDailyMetrics } from '../../services/healthService';
-import { generateInsights } from '../../services/insightEngine';
+import { callFunction } from '../../services/api';
 
 function ScoreRing({ score }: { score: number }) {
   const r = 40, cx = 48, cy = 48;
@@ -51,10 +49,11 @@ const TAB_BAR_SPACING = Platform.OS === 'ios' ? 50 : 30;
 export default function HomeScreen() {
   const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
-  const [score, setScore]           = useState(78);
-  const [insight, setInsight]       = useState({ title: 'Stress spend detected on Tuesday', body: 'You spent $149 on Nike.com after a high-stress day. Discretionary budget is now 78% with 19 days remaining.' });
-  const [stats]                     = useState({ saved: '$12,450', goals: 3, paused: 2 });
-  const [healthSummary, setHealthSummary] = useState({ sleep: 6.2, steps: 7420, stress: 'Moderate', hr: 72 });
+  const [score, setScore] = useState<number | null>(null);
+  const [insight, setInsight] = useState<{ title: string; body: string } | null>(null);
+  const [stats, setStats] = useState({ saved: 0, goals: 0, paused: 0 });
+  const [healthSummary, setHealthSummary] = useState<{ sleep: number; steps: number; stress: string; hr: number } | null>(null);
+  const [weekBars, setWeekBars] = useState<number[]>([0, 0, 0, 0, 0, 0, 0]);
 
   const now = new Date();
   const hour = now.getHours();
@@ -64,18 +63,87 @@ export default function HomeScreen() {
   const load = useCallback(async () => {
     if (!user) return;
     try {
-      const txns   = await fetchTransactions(user.id);
-      const health = await getDailyMetrics(user.id, now.toISOString().split('T')[0]);
-      const insights = generateInsights(user.id, txns, health ? [health] : [], 3000);
-      if (insights[0]) setInsight({ title: insights[0].title, body: insights[0].body });
-      if (health) setHealthSummary({ sleep: health.sleepHours, steps: health.steps, hr: health.heartRate, stress: health.stressIndicator === 'high' ? 'High' : health.stressIndicator === 'moderate' ? 'Moderate' : 'Low' });
+      const [goalsResponse, pauseHistory, health] = await Promise.all([
+        callFunction<any>('savings-goals', { method: 'GET' }),
+        callFunction<any>('impulse-history', { method: 'GET', query: { status: 'pending' } }),
+        callFunction<any>('health-metrics', { method: 'GET', query: { date: now.toISOString().split('T')[0] } }),
+      ]);
+
+      const txResponse = await callFunction<any>('plaid-transactions', { method: 'GET', query: { limit: 200 } });
+
+      const txns = Array.isArray(txResponse?.transactions) ? txResponse.transactions : [];
+      const weekStart = new Date(now);
+      const day = weekStart.getDay();
+      const diffToMonday = day === 0 ? -6 : 1 - day;
+      weekStart.setDate(weekStart.getDate() + diffToMonday);
+      weekStart.setHours(0, 0, 0, 0);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 7);
+
+      const bars = [0, 0, 0, 0, 0, 0, 0];
+      for (const tx of txns) {
+        const ts = new Date(tx.date);
+        if (Number.isNaN(ts.getTime()) || ts < weekStart || ts >= weekEnd) continue;
+        const dayIndex = ts.getDay() === 0 ? 6 : ts.getDay() - 1;
+        const amount = Math.abs(Number(tx.amount) || 0);
+        bars[dayIndex] += amount;
+      }
+      setWeekBars(bars);
+
+      const goals = Array.isArray(goalsResponse?.goals) ? goalsResponse.goals : [];
+      const insights = Array.isArray(goalsResponse?.insights) ? goalsResponse.insights : [];
+      const savedMtd = Number(goalsResponse?.total_saved ?? 0);
+      const totalPaused = Number(pauseHistory?.summary?.pending ?? pauseHistory?.summary?.total ?? 0);
+      const latestHealth = Array.isArray(health?.metrics) ? health.metrics[0] : health?.metrics;
+
+      const liveScore = Math.max(0, Math.min(100, Math.round(
+        50
+        + Math.min(goals.length * 4, 16)
+        + Math.min(savedMtd / 250, 12)
+        + Math.min(Number(latestHealth?.readiness_score ?? 0) / 10, 10)
+        - Math.min(totalPaused * 2, 10)
+      )));
+
+      setScore(liveScore);
+      setStats({
+        saved: savedMtd,
+        goals: goals.length,
+        paused: totalPaused,
+      });
+      setInsight(insights[0]
+        ? {
+            title: insights[0].title ?? 'Your finances look healthy today',
+            body: insights[0].description ?? insights[0].body ?? 'No recent insight available.',
+          }
+        : {
+            title: 'Your finances look healthy today',
+            body: 'No recent insight available.',
+          });
+
+      if (latestHealth) {
+        setHealthSummary({
+          sleep: Number(latestHealth.sleep_hours ?? latestHealth.sleepHours ?? 0),
+          steps: Number(latestHealth.steps ?? 0),
+          hr: Number(latestHealth.heart_rate ?? latestHealth.heartRate ?? 0),
+          stress: latestHealth.stress_indicator === 'high'
+            ? 'High'
+            : latestHealth.stress_indicator === 'moderate'
+              ? 'Moderate'
+              : latestHealth.stress_indicator === 'low'
+                ? 'Low'
+                : String(latestHealth.stressIndicator ?? 'Unknown'),
+        });
+      }
     } catch (e) { console.warn('[Home] load error:', e); } finally { setRefreshing(false); }
   }, [user]);
 
   useEffect(() => { load(); }, [load]);
 
-  const scoreLabel = score >= 80 ? 'Financially Strong' : score >= 60 ? 'Financially Healthy' : 'Needs Attention';
-  const scoreColor = score >= 80 ? '#34d399' : score >= 60 ? '#fbbf24' : '#f87171';
+  const scoreValue = score ?? 0;
+  const scoreLabel = scoreValue >= 80 ? 'Financially Strong' : scoreValue >= 60 ? 'Financially Healthy' : 'Needs Attention';
+  const scoreColor = scoreValue >= 80 ? '#34d399' : scoreValue >= 60 ? '#fbbf24' : '#f87171';
+  const insightTitle = insight?.title ?? 'No insights yet';
+  const insightBody = insight?.body ?? 'Connect your data to see live insight here.';
 
   return (
     <View style={styles.root}>
@@ -98,26 +166,26 @@ export default function HomeScreen() {
           </View>
 
           <View style={styles.scoreCard}>
-            <ScoreRing score={score} />
+            <ScoreRing score={scoreValue} />
             <View style={styles.scoreRight}>
               <Text style={styles.scoreLabel}>Financial Wellness</Text>
-              <Text style={styles.scoreNum}>{score}<Text style={styles.scoreOf}>/100</Text></Text>
+              <Text style={styles.scoreNum}>{scoreValue}<Text style={styles.scoreOf}>/100</Text></Text>
               <Text style={[styles.scoreStatus, { color: scoreColor }]}>{scoreLabel}</Text>
-              <Text style={styles.scoreDesc} numberOfLines={2}>{insight.title.slice(0, 50)}…</Text>
+              <Text style={styles.scoreDesc} numberOfLines={2}>{insightTitle.slice(0, 50)}…</Text>
             </View>
           </View>
 
           <View style={styles.pills}>
             <View style={[styles.pill, { borderColor: 'rgba(52,211,153,.3)', backgroundColor: 'rgba(52,211,153,.1)' }]}><Text style={[styles.pillText, { color: '#34d399' }]}>Goals on track</Text></View>
             <View style={[styles.pill, { borderColor: 'rgba(251,191,36,.3)', backgroundColor: 'rgba(251,191,36,.1)' }]}><Text style={[styles.pillText, { color: '#fbbf24' }]}>1 spend flag</Text></View>
-            <View style={[styles.pill, { borderColor: 'rgba(248,113,113,.3)', backgroundColor: 'rgba(248,113,113,.1)' }]}><Text style={[styles.pillText, { color: '#f87171' }]}>Stress: {healthSummary.stress}</Text></View>
+            <View style={[styles.pill, { borderColor: 'rgba(248,113,113,.3)', backgroundColor: 'rgba(248,113,113,.1)' }]}><Text style={[styles.pillText, { color: '#f87171' }]}>Stress: {healthSummary?.stress ?? 'Unknown'}</Text></View>
           </View>
         </LinearGradient>
 
         <View style={[styles.card, { marginTop: 14 }]}>
           <View style={styles.insightChip}><Text style={styles.insightChipText}>❖  Today's Insight</Text></View>
-          <Text style={styles.insightTitle}>{insight.title}</Text>
-          <Text style={styles.insightBody}>{insight.body}</Text>
+          <Text style={styles.insightTitle}>{insightTitle}</Text>
+          <Text style={styles.insightBody}>{insightBody}</Text>
           <TouchableOpacity style={styles.insightCta} onPress={() => router.push('/purchase-check')}>
             <Text style={styles.insightCtaText}>Review with FinZee AI</Text>
             <Text style={styles.insightCtaArrow}>→</Text>
@@ -125,7 +193,7 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.statsRow}>
-          {[{ icon: '📈', label: 'Saved', value: stats.saved, bg: Colors.blueTint },
+          {[{ icon: '📈', label: 'Saved', value: `$${Math.round(stats.saved).toLocaleString()}`, bg: Colors.blueTint },
             { icon: '🎯', label: 'Goals', value: `${stats.goals} Active`, bg: Colors.greenTint },
             { icon: '⏸️', label: 'Paused', value: `${stats.paused} Items`, bg: Colors.purpleTint }]
             .map(s => (
@@ -144,13 +212,16 @@ export default function HomeScreen() {
             <TouchableOpacity><Text style={styles.cardLink}>See all</Text></TouchableOpacity>
           </View>
           <View style={styles.barsRow}>
-            <SpendBar height={35} color="#dbeafe" label="Mon" />
-            <SpendBar height={54} color="#fecaca" label="Tue" flag />
-            <SpendBar height={22} color="#dbeafe" label="Wed" />
-            <SpendBar height={40} color="#dbeafe" label="Thu" />
-            <SpendBar height={14} color="#d1fae5" label="Fri" />
-            <SpendBar height={28} color="#dbeafe" label="Sat" />
-            <SpendBar height={8}  color="#eef1f8" label="Sun" />
+            {(() => {
+              const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+              const max = Math.max(...weekBars, 1);
+              return labels.map((label, index) => {
+                const amount = weekBars[index] ?? 0;
+                const height = amount > 0 ? Math.max((amount / max) * 60, 4) : 4;
+                const color = index === 1 && amount === max ? '#fecaca' : index === 4 ? '#d1fae5' : amount > 0 ? '#dbeafe' : '#eef1f8';
+                return <SpendBar key={label} height={height} color={color} label={label} flag={index === 1 && amount === max} />;
+              });
+            })()}
           </View>
         </View>
 
@@ -161,7 +232,7 @@ export default function HomeScreen() {
               <Text style={{ color: Colors.blue, fontWeight: '700', fontSize: 13 }}>View →</Text>
             </View>
             <View style={styles.healthMetrics}>
-              {[{ label: 'Sleep', value: `${healthSummary.sleep}h`, color: '#818cf8' }, { label: 'Steps', value: healthSummary.steps.toLocaleString(), color: '#34d399' }, { label: 'HR', value: `${healthSummary.hr}bpm`, color: '#f87171' }, { label: 'Stress', value: healthSummary.stress, color: '#fbbf24' }]
+              {[{ label: 'Sleep', value: `${healthSummary?.sleep ?? 0}h`, color: '#818cf8' }, { label: 'Steps', value: (healthSummary?.steps ?? 0).toLocaleString(), color: '#34d399' }, { label: 'HR', value: `${healthSummary?.hr ?? 0}bpm`, color: '#f87171' }, { label: 'Stress', value: healthSummary?.stress ?? 'Unknown', color: '#fbbf24' }]
                 .map(m => (<View key={m.label} style={styles.hm}><Text style={[styles.hmVal, { color: m.color }]}>{m.value}</Text><Text style={styles.hmLbl}>{m.label}</Text></View>))}
             </View>
           </LinearGradient>
