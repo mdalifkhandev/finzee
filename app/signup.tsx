@@ -55,10 +55,15 @@ export default function SignUpScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       console.log('[SignUp] current user', user?.id ?? null);
       if (user) {
-        const consentResult = await supabase.from('consent_logs').insert({
-          user_id: user.id, financial_data: consentFinancial, health_data: consentHealth,
-          ai_personalization: consentAI, terms_accepted: consentTerms, consented_at: new Date().toISOString(),
-        });
+        const consentResult = await supabase.from('consent_logs').upsert({
+          user_id: user.id,
+          financial_data: consentFinancial,
+          health_data: consentHealth,
+          ai_personalization: consentAI,
+          terms_accepted: consentTerms,
+          consented_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
         console.log('[SignUp] consent log result', consentResult);
       }
     } catch (e) { console.warn('[SignUp] consent log error:', e); }

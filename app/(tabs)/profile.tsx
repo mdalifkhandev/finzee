@@ -1,5 +1,5 @@
 // FinZee AI™ — Profile & Settings Screen
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, Platform, StatusBar } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -7,6 +7,7 @@ import { Colors, Shadow, Radius, Gradients } from '../../constants/theme';
 import FinZeeLogo from '../../components/FinZeeLogo';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../services/supabaseClient';
+import { callFunction } from '../../services/api';
 import { CONFIG } from '../../constants/config';
 const TAB_BAR_SPACING = Platform.OS === 'ios' ? 50 : 30;
 
@@ -37,13 +38,106 @@ export default function ProfileScreen() {
   const [consentHealth, setConsentHealth]       = useState(true);
   const [consentAI, setConsentAI]               = useState(true);
   const [consentPush, setConsentPush]           = useState(true);
+  const [wellnessScore, setWellnessScore]       = useState(78);
+  const [goalsActive, setGoalsActive]           = useState(3);
+  const [daysStreak, setDaysStreak]             = useState(12);
 
   const firstName = user?.displayName?.split(' ')[0] || 'User';
   const initials  = user?.displayName?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
 
-  async function updateConsent(key: string, value: boolean) {
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadConsentState() {
+      if (!user || CONFIG.DEV_MODE) return;
+      try {
+        const { data, error } = await supabase
+          .from('consent_logs')
+          .select('financial_data, health_data, ai_personalization, push_reminders, terms_accepted')
+          .eq('user_id', user.id)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (error) {
+          console.warn('[Profile] consent load error:', error);
+          return;
+        }
+
+        if (data && mounted) {
+          if (typeof data.financial_data === 'boolean') setConsentFinancial(data.financial_data);
+          if (typeof data.health_data === 'boolean') setConsentHealth(data.health_data);
+          if (typeof data.ai_personalization === 'boolean') setConsentAI(data.ai_personalization);
+          if (typeof data.push_reminders === 'boolean') setConsentPush(data.push_reminders);
+        }
+      } catch (error) {
+        console.warn('[Profile] consent load exception:', error);
+      }
+    }
+
+    async function loadLiveStats() {
+      if (!user || CONFIG.DEV_MODE) return;
+      try {
+        const [summary, streak, status] = await Promise.all([
+          callFunction<any>('dashboard-summary', { method: 'GET' }),
+          callFunction<any>('impulse-streak', { method: 'GET' }),
+          callFunction<any>('user-status', { method: 'GET' }),
+        ]);
+
+        const goals = Array.isArray(summary?.goals) ? summary.goals : [];
+        const budgets = Array.isArray(summary?.budgets) ? summary.budgets : [];
+        const financial = summary?.summary ?? {};
+        const goalCount = Number(status?.counts?.goals ?? 0) || goals.length || summary?.financial_summary?.active_goals_count || 0;
+        const currentStreak = Number(streak?.current_streak_days ?? 0);
+        const savedMtd = Number(financial.saved_mtd ?? 0);
+        const spendingMtd = Number(financial.spending_mtd ?? 0);
+        const budgetUtil = budgets.length
+          ? budgets.reduce((sum: number, b: any) => sum + Number(b.pct ?? 0), 0) / budgets.length
+          : Number(summary?.financial_summary?.budget_utilization_pct ?? 0);
+
+        const liveScore = Math.max(0, Math.min(100, Math.round(
+          50
+          + Math.min(goalCount * 4, 16)
+          + Math.min(currentStreak, 12)
+          + Math.min(savedMtd / 100, 12)
+          + Math.max(0, 10 - Math.min(budgetUtil / 10, 10))
+          - Math.min(spendingMtd / 500, 8)
+        )));
+
+        if (mounted) {
+          setGoalsActive(goalCount);
+          setDaysStreak(currentStreak);
+          setWellnessScore(liveScore);
+        }
+      } catch (error) {
+        console.warn('[Profile] live stats load error:', error);
+      }
+    }
+
+    void loadConsentState();
+    void loadLiveStats();
+    return () => { mounted = false; };
+  }, [user]);
+
+  async function updateConsent(key: 'financial_data' | 'health_data' | 'ai_personalization' | 'push_reminders', value: boolean) {
     if (!user || CONFIG.DEV_MODE) return;
-    await supabase.from('consent_logs').insert({ user_id: user.id, [key]: value, updated_at: new Date().toISOString() });
+    const nextConsent = {
+      financial_data: key === 'financial_data' ? value : consentFinancial,
+      health_data: key === 'health_data' ? value : consentHealth,
+      ai_personalization: key === 'ai_personalization' ? value : consentAI,
+      push_reminders: key === 'push_reminders' ? value : consentPush,
+      terms_accepted: true,
+      consented_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error } = await supabase
+      .from('consent_logs')
+      .upsert({ user_id: user.id, ...nextConsent }, { onConflict: 'user_id' });
+
+    if (error) {
+      console.warn('[Profile] consent save error:', error);
+    }
   }
 
   function handleSignOut() {
@@ -87,7 +181,7 @@ export default function ProfileScreen() {
             <FinZeeLogo variant="light" width={80} />
           </View>
           <View style={styles.scoreRow}>
-            {[{ label: 'Wellness Score', value: '78', color: '#34d399' }, { label: 'Goals Active', value: '3', color: '#60a5fa' }, { label: 'Days Streak', value: '12', color: '#fbbf24' }]
+            {[{ label: 'Wellness Score', value: String(wellnessScore), color: '#34d399' }, { label: 'Goals Active', value: String(goalsActive), color: '#60a5fa' }, { label: 'Days Streak', value: String(daysStreak), color: '#fbbf24' }]
               .map(s => <View key={s.label} style={styles.scoreItem}><Text style={[styles.scoreVal, { color: s.color }]}>{s.value}</Text><Text style={styles.scoreLbl}>{s.label}</Text></View>)}
           </View>
         </LinearGradient>
