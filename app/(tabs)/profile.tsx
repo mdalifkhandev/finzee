@@ -9,6 +9,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../services/supabaseClient';
 import { callFunction } from '../../services/api';
 import { CONFIG } from '../../constants/config';
+import { syncPushTokenForUser } from '../../services/pushNotifications';
 const TAB_BAR_SPACING = Platform.OS === 'ios' ? 50 : 30;
 
 function SectionHeader({ title }: { title: string }) {
@@ -131,6 +132,15 @@ export default function ProfileScreen() {
 
     if (error) {
       console.warn('[Profile] consent save error:', error);
+      return;
+    }
+
+    if (key === 'push_reminders') {
+      try {
+        await syncPushTokenForUser(user.id, value);
+      } catch (pushError) {
+        console.warn('[Profile] push sync error:', pushError);
+      }
     }
   }
 

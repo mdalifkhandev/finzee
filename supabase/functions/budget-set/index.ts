@@ -1,6 +1,7 @@
 // POST /budget-set — create or update a category budget limit.
 // Body: { category, amount, period?, color?, icon? }
 import { jsonResponse, optionsResponse, requireUser } from "../_shared.ts";
+import { dispatchBudgetAlerts, loadBudgetSummary } from "../_budget_alerts.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return optionsResponse();
@@ -14,7 +15,7 @@ Deno.serve(async (req) => {
     const { supabase, user } = auth;
 
     const body = await req.json();
-    const { category, amount, period, color, icon } = body ?? {};
+    const { category, amount, period, color, icon, month } = body ?? {};
 
     if (!category || amount === undefined || amount === null) {
       return jsonResponse({ error: "category and amount are required" }, 400);
@@ -27,23 +28,36 @@ Deno.serve(async (req) => {
       .select("id")
       .eq("user_id", user.id)
       .eq("category", category)
+      .eq("month", monthStart)
       .maybeSingle();
 
-    const payload = {
+    const now = new Date();
+    const monthStart = month ?? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10);
+
+    const basePayload = {
       user_id: user.id,
       category,
-      amount: Number(amount),
+      limit_amount: Number(amount),
+      month: monthStart,
       period: period ?? "monthly",
       color: color ?? null,
       icon: icon ?? null,
     };
 
+    const insertPayload = {
+      ...basePayload,
+      spent_amount: 0,
+    };
+
     const query = existing
-      ? supabase.from("budgets").update(payload).eq("id", existing.id).select().single()
-      : supabase.from("budgets").insert(payload).select().single();
+      ? supabase.from("budgets").update(basePayload).eq("id", existing.id).select().single()
+      : supabase.from("budgets").insert(insertPayload).select().single();
 
     const { data, error } = await query;
     if (error) return jsonResponse({ error: error.message }, 500);
+
+    const summary = await loadBudgetSummary(supabase, user.id);
+    void dispatchBudgetAlerts(supabase, user.id, summary);
 
     return jsonResponse({ budget: data });
   } catch (err) {

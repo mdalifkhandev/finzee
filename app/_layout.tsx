@@ -2,8 +2,11 @@ import { Slot } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View, StyleSheet } from 'react-native';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 
 export default function RootLayout() {
+  usePushNotifications();
+
   return (
     <SafeAreaProvider>
       <View style={styles.container}>

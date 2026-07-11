@@ -1,5 +1,6 @@
 // GET /plaid-transactions — returns the user's transactions from the DB.
 import { jsonResponse, optionsResponse, requireUser } from "../_shared.ts";
+import { dispatchBudgetAlerts, loadBudgetSummary } from "../_budget_alerts.ts";
 
 const DISCRETIONARY = ["shopping", "entertainment", "dining", "food and drink", "travel", "recreation"];
 
@@ -31,6 +32,9 @@ Deno.serve(async (req) => {
       date: t.ts ? new Date(t.ts).toISOString().slice(0, 10) : null,
       is_discretionary: DISCRETIONARY.includes(((Array.isArray(t.categories) ? (t.categories[0] ?? "") : "") ?? "").toLowerCase()),
     }));
+
+    const summary = await loadBudgetSummary(supabase, user.id, data ?? []);
+    void dispatchBudgetAlerts(supabase, user.id, summary);
 
     return jsonResponse({ transactions, source: "db" });
   } catch (err) {
