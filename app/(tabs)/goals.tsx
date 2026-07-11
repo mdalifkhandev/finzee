@@ -16,11 +16,32 @@ interface Goal {
   target: number; current: number; deadline?: string; created_at: string;
 }
 
-const DEFAULT_GOALS: Goal[] = [
-  { id: 'g1', user_id: 'dev', name: 'Emergency Fund',     emoji: '🛡️', target: 15000, current: 15000, created_at: '' },
-  { id: 'g2', user_id: 'dev', name: 'House Down Payment', emoji: '🏠', target: 60000, current: 25200, deadline: '2027-12-01', created_at: '' },
-  { id: 'g3', user_id: 'dev', name: 'Japan Vacation',     emoji: '✈️', target: 5000,  current: 3500,  deadline: '2026-02-01', created_at: '' },
-];
+type GoalRow = {
+  id: string;
+  user_id: string;
+  name: string;
+  icon?: string | null;
+  target_amount: number;
+  current_amount: number;
+  target_date?: string | null;
+  created_at: string;
+  is_completed?: boolean;
+  progress?: number | null;
+  status?: string | null;
+};
+
+function mapGoalRow(row: GoalRow): Goal {
+  return {
+    id: row.id,
+    user_id: row.user_id,
+    name: row.name,
+    emoji: row.icon || '🎯',
+    target: Number(row.target_amount) || 0,
+    current: Number(row.current_amount) || 0,
+    deadline: row.target_date || undefined,
+    created_at: row.created_at,
+  };
+}
 
 const EMOJI_OPTIONS = ['🏠','✈️','🚗','🎓','💍','🛡️','💻','🏻','🌴','💰','🎯','🏦'];
 const TAB_BAR_SPACING = Platform.OS === 'ios' ? 50 : 30;
@@ -126,20 +147,33 @@ export default function GoalsScreen() {
   useEffect(() => { loadGoals(); }, [user]);
 
   async function loadGoals() {
-    if (CONFIG.DEV_MODE || !user) { setGoals(DEFAULT_GOALS); setLoading(false); return; }
+    if (!user || CONFIG.DEV_MODE) { setGoals([]); setLoading(false); return; }
     try {
       const { data, error } = await supabase.from('goals').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
       if (error) throw error;
-      setGoals(data ?? DEFAULT_GOALS);
-    } catch (e) { console.warn('[Goals] load error:', e); setGoals(DEFAULT_GOALS); } finally { setLoading(false); }
+      setGoals((data ?? []).map((row: GoalRow) => mapGoalRow(row)));
+    } catch (e) { console.warn('[Goals] load error:', e); setGoals([]); } finally { setLoading(false); }
   }
 
   async function addGoal(g: Omit<Goal,'id'|'user_id'|'created_at'>) {
-    if (CONFIG.DEV_MODE || !user) {
-      setGoals(prev => [{ ...g, id: Date.now().toString(), user_id: 'dev', created_at: '' }, ...prev]); return;
+    if (CONFIG.DEV_MODE || !user) return;
+    const payload = {
+      user_id: user.id,
+      name: g.name,
+      icon: g.emoji,
+      target_amount: Number(g.target) || 0,
+      current_amount: Number(g.current) || 0,
+      target_date: g.deadline || null,
+      status: 'active',
+      is_completed: (Number(g.current) || 0) >= (Number(g.target) || 0),
+      progress: (Number(g.target) || 0) > 0 ? Math.min((Number(g.current) || 0) / Number(g.target), 1) : 0,
+    };
+    const { data, error } = await supabase.from('goals').insert(payload).select('*').single();
+    if (error) {
+      Alert.alert('Goal save failed', error.message);
+      return;
     }
-    const { data, error } = await supabase.from('goals').insert({ ...g, user_id: user.id }).select().single();
-    if (!error && data) setGoals(prev => [data, ...prev]);
+    if (data) setGoals(prev => [mapGoalRow(data as GoalRow), ...prev]);
   }
 
   const totalSaved  = goals.reduce((s, g) => s + g.current, 0);
@@ -166,7 +200,13 @@ export default function GoalsScreen() {
         <View style={styles.body}>
           {loading
             ? <ActivityIndicator color={Colors.blue} style={{ marginTop: 40 }} />
-            : goals.map(g => <GoalCard key={g.id} goal={g} onCelebrate={setCelebrated} />)
+            : goals.length === 0
+              ? <View style={styles.emptyState}>
+                  <Text style={styles.emptyEmoji}>🎯</Text>
+                  <Text style={styles.emptyTitle}>No goals yet</Text>
+                  <Text style={styles.emptySub}>Add your first goal to start tracking progress here.</Text>
+                </View>
+              : goals.map(g => <GoalCard key={g.id} goal={g} onCelebrate={setCelebrated} />)
           }
           <TouchableOpacity style={styles.addWrap} onPress={() => setShowAdd(true)}>
             <LinearGradient colors={Gradients.blue} style={styles.addBtn}><Text style={styles.addBtnText}>+ Add New Goal</Text></LinearGradient>
@@ -216,6 +256,10 @@ const styles = StyleSheet.create({
   nudge:        { flexDirection: 'row', gap: 10, backgroundColor: Colors.blueTint, borderRadius: Radius.md, padding: 14, alignItems: 'flex-start' },
   nudgeEmoji:   { fontSize: 16 },
   nudgeText:    { fontSize: 12, color: Colors.blue, lineHeight: 17, flex: 1, fontWeight: '500' },
+  emptyState:   { alignItems: 'center', paddingVertical: 40 },
+  emptyEmoji:   { fontSize: 48, marginBottom: 12 },
+  emptyTitle:   { fontSize: 18, fontWeight: '800', color: Colors.ink, marginBottom: 6 },
+  emptySub:     { fontSize: 13, color: Colors.mute, textAlign: 'center', lineHeight: 18, paddingHorizontal: 24 },
 });
 const cel = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(6,8,15,0.65)', justifyContent: 'flex-end' },
