@@ -1,6 +1,6 @@
 // FinZee AI™ — 24-Hour Pause List Screen
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, StatusBar, Animated, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, StatusBar, Animated, Alert, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Colors, Shadow, Radius } from '../../constants/theme';
@@ -10,10 +10,6 @@ import { supabase } from '../../services/supabaseClient';
 import { CONFIG } from '../../constants/config';
 import type { PauseListItem } from '../../types';
 
-const DEV_ITEMS: PauseListItem[] = [
-  { id: 'p1', userId: 'dev', itemName: 'Designer Handbag', price: 890, category: 'Shopping · Luxury', sourceUrl: '', reason: 'Wanted this for months — bought it after a really stressful week.', createdAt: new Date(Date.now() - 5 * 3600000).toISOString(), reminderDueAt: new Date(Date.now() + 19 * 3600000).toISOString(), status: 'pending' },
-  { id: 'p2', userId: 'dev', itemName: 'Standing Desk', price: 449, category: 'Home Office · Productivity', sourceUrl: '', reason: 'My back really hurts — this feels necessary right now.', createdAt: new Date(Date.now() - 17 * 3600000).toISOString(), reminderDueAt: new Date(Date.now() + 7 * 3600000).toISOString(), status: 'pending' },
-];
 const TAB_BAR_SPACING = Platform.OS === 'ios' ? 50 : 30;
 
 function useCountdown(targetDate: string) {
@@ -74,17 +70,23 @@ export default function PauseScreen() {
   const { user } = useAuth();
   const [items, setItems] = useState<PauseListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const totalHeld = items.reduce((s, i) => s + i.price, 0);
 
   useEffect(() => { loadItems(); }, [user]);
 
   async function loadItems() {
-    if (CONFIG.DEV_MODE || !user) { setItems(DEV_ITEMS); setLoading(false); return; }
+    if (!user || CONFIG.DEV_MODE) { setItems([]); setLoading(false); setRefreshing(false); return; }
     try {
       const { data, error } = await supabase.from('pause_list_items').select('*').eq('user_id', user.id).eq('status', 'pending').order('created_at', { ascending: false });
       if (error) throw error;
       setItems((data ?? []).map((d: any) => ({ id: d.id, userId: d.user_id, itemName: d.item_name, price: d.price, category: d.category, sourceUrl: d.source_url, reason: d.reason, createdAt: d.created_at, reminderDueAt: d.reminder_due_at, status: d.status })));
-    } catch (e) { console.warn('[Pause] load error:', e); setItems(DEV_ITEMS); } finally { setLoading(false); }
+    } catch (e) { console.warn('[Pause] load error:', e); setItems([]); } finally { setLoading(false); setRefreshing(false); }
+  }
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await loadItems();
   }
 
   async function updateStatus(id: string, status: 'bought' | 'skipped') {
@@ -99,6 +101,7 @@ export default function PauseScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.blue} />}
       >
         <LinearGradient colors={['#064e3b', '#065f46', '#059669']} style={styles.hero}>
           <View style={styles.heroBar}>

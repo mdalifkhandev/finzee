@@ -64,10 +64,14 @@ export default function PurchaseCheckScreen() {
     if (!itemName || !price) return;
     const due = new Date(); due.setHours(due.getHours() + 24);
     if (!CONFIG.DEV_MODE && user) {
-      await supabase.from('pause_list_items').insert({
+      const { error } = await supabase.from('pause_list_items').insert({
         user_id: user.id, item_name: itemName.trim(), price: parseFloat(price),
         category, reason: reason || 'No reason given', reminder_due_at: due.toISOString(), status: 'pending',
       });
+      if (error) {
+        Alert.alert('Could not add to Pause List', error.message);
+        return;
+      }
     }
     setSavedToPause(true);
     Alert.alert('Added to Pause List ⏸', `We'll remind you about "${itemName}" in 24 hours. Take that time to reflect.`,
