@@ -30,8 +30,8 @@ serve(async (req) => {
 
     console.log(`ai-user-context: Fetching context for user ${user.id}`);
 
-    // Parallel fetch: profile, prefs, accounts, goals, budgets
-    const [profileRes, prefsRes, accountsRes, goalsRes, budgetsRes] = await Promise.all([
+    // Parallel fetch: profile, prefs, accounts, goals, budgets, pause list
+    const [profileRes, prefsRes, accountsRes, goalsRes, budgetsRes, pauseRes] = await Promise.all([
       supabase
         .from("profiles")
         .select("first_name, last_name, age, bio, tags, income_pattern, pain_points, goals, preferred_language")
@@ -49,16 +49,21 @@ serve(async (req) => {
         .eq("is_active", true),
       supabase
         .from("goals")
-        .select("id, name, kind, target_amount, current_amount, due_date, target_date, is_completed, status, progress, category")
+        .select("id, name, kind, target_amount, current_amount, target_date, is_completed, status, progress, category")
         .eq("user_id", user.id)
-        .eq("is_completed", false)
-        .order("due_date", { ascending: true }),
+        .order("target_date", { ascending: true }),
       supabase
         .from("budgets")
         .select("category, limit_amount, spent_amount, month")
         .eq("user_id", user.id)
         .order("month", { ascending: false })
         .limit(10),
+      supabase
+        .from("pause_list_items")
+        .select("id, item_name, price, category, reason, status, reminder_due_at, decided_at, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(20),
     ]);
 
     const profile = profileRes.data;
@@ -66,10 +71,15 @@ serve(async (req) => {
     const accounts = accountsRes.data || [];
     const goals = goalsRes.data || [];
     const budgets = budgetsRes.data || [];
+    const pauseItems = pauseRes.data || [];
+    const activeGoals = goals.filter((goal) => goal.is_completed !== true && goal.status !== "completed");
+    const pendingPauseItems = pauseItems.filter((item) => item.status === "pending");
+    const skippedPauseItems = pauseItems.filter((item) => item.status === "skipped");
+    const boughtPauseItems = pauseItems.filter((item) => item.status === "bought");
 
     // Compute quick financial summary
     const totalBalance = accounts.reduce((sum, a) => sum + Number(a.balance || 0), 0);
-    const activeGoalsCount = goals.length;
+    const activeGoalsCount = activeGoals.length;
     const totalGoalTarget = goals.reduce((sum, g) => sum + Number(g.target_amount || 0), 0);
     const totalGoalProgress = goals.reduce((sum, g) => sum + Number(g.current_amount || 0), 0);
 
@@ -117,7 +127,19 @@ serve(async (req) => {
         progress_pct: g.target_amount > 0 
           ? +((Number(g.current_amount) / Number(g.target_amount)) * 100).toFixed(1) 
           : 0,
-        due_date: g.due_date || g.target_date,
+        due_date: g.target_date,
+        status: g.status,
+      })),
+      active_goals: activeGoals.map(g => ({
+        name: g.name,
+        kind: g.kind,
+        category: g.category,
+        current_amount: Number(g.current_amount),
+        target_amount: Number(g.target_amount),
+        progress_pct: g.target_amount > 0 
+          ? +((Number(g.current_amount) / Number(g.target_amount)) * 100).toFixed(1) 
+          : 0,
+        due_date: g.target_date,
         status: g.status,
       })),
       budgets: currentBudgets.slice(0, 5).map(b => ({
@@ -127,6 +149,22 @@ serve(async (req) => {
         pct: b.limit_amount > 0 
           ? +((Number(b.spent_amount) / Number(b.limit_amount)) * 100).toFixed(1) 
           : 0,
+      })),
+      pause_summary: {
+        total: pauseItems.length,
+        pending: pendingPauseItems.length,
+        skipped: skippedPauseItems.length,
+        bought: boughtPauseItems.length,
+        currently_held: pendingPauseItems.reduce((sum, item) => sum + Number(item.price || 0), 0),
+        total_saved: skippedPauseItems.reduce((sum, item) => sum + Number(item.price || 0), 0),
+      },
+      pause_items: pauseItems.slice(0, 5).map(item => ({
+        item_name: item.item_name,
+        price: Number(item.price || 0),
+        category: item.category,
+        reason: item.reason,
+        status: item.status,
+        reminder_due_at: item.reminder_due_at,
       })),
     };
 

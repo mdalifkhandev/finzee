@@ -46,9 +46,20 @@ export async function callFunction<T = any>(name: string, opts: CallOptions = {}
   });
 
   const text = await res.text();
-  const data = text ? JSON.parse(text) : {};
+  let data: any = {};
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { raw: text };
+    }
+  }
   if (!res.ok) {
-    throw new Error(data?.error || `Request to ${name} failed (${res.status})`);
+    throw new Error(
+      data?.error ||
+      data?.raw ||
+      `Request to ${name} failed (${res.status})`
+    );
   }
   return data as T;
 }

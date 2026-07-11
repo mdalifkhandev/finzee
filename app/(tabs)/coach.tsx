@@ -11,9 +11,10 @@ import FinZeeLogo from '../../components/FinZeeLogo';
 import { useAuth } from '../../hooks/useAuth';
 import { CONFIG } from '../../constants/config';
 import { callFunction } from '../../services/api';
-import type { AICoachResponse } from '../../types';
 
 interface Message { id: string; role: 'ai' | 'user'; text: string; ts: Date; }
+interface ChatResponse { text: string; }
+interface AICoachResponse { coachingResponse: string; }
 
 const QUICK_PROMPTS = [
   'Am I on track for my house goal?', 'Why did my score dip?', 'Help me stop impulse spending',
@@ -40,7 +41,34 @@ export default function CoachScreen() {
   const firstName = user?.displayName?.split(' ')[0] || 'there';
 
   useEffect(() => {
-    setMessages([{ id: '0', role: 'ai', text: `Hi ${firstName}! Your financial wellness score is 78 today — you're in great shape. I spotted a stress spend on Tuesday. What's on your mind?`, ts: new Date() }]);
+    let mounted = true;
+
+    async function loadWelcome() {
+      if (!user) return;
+
+      try {
+        const data = await callFunction<{ text: string }>('ai-welcome', {
+          method: 'POST',
+        });
+
+        if (!mounted) return;
+        setMessages([{ id: '0', role: 'ai', text: data.text, ts: new Date() }]);
+      } catch {
+        if (!mounted) return;
+        setMessages([{
+          id: '0',
+          role: 'ai',
+          text: `Hi ${firstName}! I'm ready to help with your money questions. Ask me anything about spending, goals, or the next best move.`,
+          ts: new Date(),
+        }]);
+      }
+    }
+
+    loadWelcome();
+
+    return () => {
+      mounted = false;
+    };
   }, [firstName]);
 
   useEffect(() => {
@@ -64,14 +92,38 @@ export default function CoachScreen() {
         await new Promise(r => setTimeout(r, 1400));
         aiText = DEV_RESPONSES[Math.floor(Math.random() * DEV_RESPONSES.length)];
       } else {
-        const data = await callFunction<AICoachResponse>('ai-coach', {
-          method: 'POST',
-          body: { userQuestion: trimmed, spendingSummary: { discretionaryPct: 78, budgetRemaining: 1200 }, recentInsights: ['Stress spend on Tuesday', 'Sleep below 7hrs 3 nights this week'] },
-        });
-        aiText = data.coachingResponse;
+        const conversation = messages.slice(-6).map((msg) => ({
+          role: msg.role === 'ai' ? 'assistant' : 'user',
+          content: msg.text,
+        }));
+
+        try {
+          const data = await callFunction<ChatResponse>('chat', {
+            method: 'POST',
+            body: {
+              message: trimmed,
+              context: { messages: conversation },
+            },
+          });
+          aiText = data.text;
+        } catch (chatError) {
+          console.warn('[Coach] chat function failed, falling back to ai-coach:', chatError);
+          const data = await callFunction<AICoachResponse>('ai-coach', {
+            method: 'POST',
+            body: {
+              userQuestion: trimmed,
+              spendingSummary: {
+                recentConversation: conversation,
+              },
+              recentInsights: [],
+            },
+          });
+          aiText = data.coachingResponse;
+        }
       }
       setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'ai', text: aiText, ts: new Date() }]);
-    } catch {
+    } catch (error) {
+      console.warn('[Coach] all live AI routes failed:', error);
       setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'ai', text: "I'm having trouble connecting right now. Please try again in a moment.", ts: new Date() }]);
     } finally {
       setTyping(false);
