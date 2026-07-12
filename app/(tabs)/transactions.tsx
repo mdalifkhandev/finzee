@@ -10,12 +10,16 @@ import {
   RefreshControl,
   StatusBar,
   Platform,
+  Modal,
+  Alert,
+  Switch,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Radius, Shadow } from '../../constants/theme';
 import { useAuth } from '../../hooks/useAuth';
 import { callFunction } from '../../services/api';
+import { supabase } from '../../services/supabaseClient';
 
 type TransactionItem = {
   id: string;
@@ -96,11 +100,22 @@ export default function TransactionsScreen() {
   const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   const [source, setSource] = useState<'db' | 'empty' | 'error'>('empty');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    merchant: '',
+    amount: '',
+    category: 'Shopping',
+    type: 'expense' as 'expense' | 'income',
+    date: new Date().toISOString().split('T')[0],
+    description: '',
+    isRecurring: false,
+  });
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -169,9 +184,220 @@ export default function TransactionsScreen() {
     [transactions],
   );
 
+  const categoryOptions = useMemo(() => {
+    const base = ['Shopping', 'Food', 'Groceries', 'Transportation', 'Entertainment', 'Utilities', 'Income', 'Health', 'Travel'];
+    const seen = new Set(base);
+    for (const tx of transactions) {
+      if (tx.category && !seen.has(tx.category)) {
+        seen.add(tx.category);
+        base.push(tx.category);
+      }
+    }
+    return base;
+  }, [transactions]);
+
+  const resetForm = useCallback(() => {
+    setForm({
+      merchant: '',
+      amount: '',
+      category: 'Shopping',
+      type: 'expense',
+      date: new Date().toISOString().split('T')[0],
+      description: '',
+      isRecurring: false,
+    });
+  }, []);
+
+  const openAddModal = useCallback(() => {
+    if (!user) {
+      Alert.alert('Sign in required', 'Please sign in before adding a transaction.');
+      return;
+    }
+    setShowAddModal(true);
+  }, [user]);
+
+  const handleSaveTransaction = useCallback(async () => {
+    if (!user) return;
+
+    const merchant = form.merchant.trim();
+    const amountValue = Number.parseFloat(form.amount);
+    const parsedDate = new Date(`${form.date}T12:00:00.000Z`);
+    if (!merchant || Number.isNaN(amountValue) || amountValue <= 0 || !form.category) {
+      Alert.alert('Missing info', 'Please add merchant, amount, and category.');
+      return;
+    }
+    if (Number.isNaN(parsedDate.getTime())) {
+      Alert.alert('Invalid date', 'Please use a valid date in YYYY-MM-DD format.');
+      return;
+    }
+
+    const signedAmount = form.type === 'income' ? Math.abs(amountValue) : -Math.abs(amountValue);
+
+    setSaving(true);
+    try {
+      const { error } = await supabase.from('transactions').insert({
+        user_id: user.id,
+        account_id: null,
+        amount: signedAmount,
+        type: form.type,
+        categories: [form.category],
+        description: form.description.trim() || null,
+        merchant,
+        ts: parsedDate.toISOString(),
+        is_recurring: form.isRecurring,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      Alert.alert('Transaction saved', `${merchant} was added successfully.`);
+      setShowAddModal(false);
+      resetForm();
+      await load();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to save transaction';
+      Alert.alert('Save failed', message);
+    } finally {
+      setSaving(false);
+    }
+  }, [form, load, resetForm, user]);
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="#06080f" translucent={false} />
+      <Modal
+        visible={showAddModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowAddModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalKicker}>Add transaction</Text>
+                <Text style={styles.modalTitle}>Create a new record</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowAddModal(false)}>
+                <Ionicons name="close" size={22} color={Colors.mute} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalBody}>
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Merchant / name</Text>
+                <TextInput
+                  style={styles.formInput}
+                  value={form.merchant}
+                  onChangeText={(merchant) => setForm((prev) => ({ ...prev, merchant }))}
+                  placeholder="e.g. Starbucks"
+                  placeholderTextColor={Colors.mute2}
+                />
+              </View>
+
+              <View style={styles.formRow}>
+                <View style={[styles.formGroup, { flex: 1 }]}>
+                  <Text style={styles.formLabel}>Amount</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    value={form.amount}
+                    onChangeText={(amount) => setForm((prev) => ({ ...prev, amount }))}
+                    placeholder="0.00"
+                    placeholderTextColor={Colors.mute2}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+                <View style={[styles.formGroup, { flex: 1 }]}>
+                  <Text style={styles.formLabel}>Type</Text>
+                  <View style={styles.segmentWrap}>
+                    {(['expense', 'income'] as const).map((value) => {
+                      const active = form.type === value;
+                      return (
+                        <TouchableOpacity
+                          key={value}
+                          style={[styles.segment, active && styles.segmentActive]}
+                          onPress={() => setForm((prev) => ({ ...prev, type: value }))}
+                        >
+                          <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
+                            {value === 'expense' ? 'Expense' : 'Income'}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Category</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryWrap}>
+                  {categoryOptions.map((category) => {
+                    const active = form.category === category;
+                    return (
+                      <TouchableOpacity
+                        key={category}
+                        style={[styles.categoryChip, active && styles.categoryChipActive]}
+                        onPress={() => setForm((prev) => ({ ...prev, category }))}
+                      >
+                        <Text style={[styles.categoryChipText, active && styles.categoryChipTextActive]}>{category}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Date</Text>
+                <TextInput
+                  style={styles.formInput}
+                  value={form.date}
+                  onChangeText={(date) => setForm((prev) => ({ ...prev, date }))}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor={Colors.mute2}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Description</Text>
+                <TextInput
+                  style={[styles.formInput, styles.formTextarea]}
+                  value={form.description}
+                  onChangeText={(description) => setForm((prev) => ({ ...prev, description }))}
+                  placeholder="Optional note"
+                  placeholderTextColor={Colors.mute2}
+                  multiline
+                />
+              </View>
+
+              <View style={styles.toggleRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.formLabel}>Recurring</Text>
+                  <Text style={styles.toggleSub}>Mark this if it repeats every month or week.</Text>
+                </View>
+                <Switch
+                  value={form.isRecurring}
+                  onValueChange={(isRecurring) => setForm((prev) => ({ ...prev, isRecurring }))}
+                  trackColor={{ false: Colors.mute3, true: Colors.blue }}
+                  thumbColor={Colors.surface}
+                />
+              </View>
+            </ScrollView>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => { setShowAddModal(false); resetForm(); }}>
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.saveBtn} onPress={handleSaveTransaction} disabled={saving}>
+                <LinearGradient colors={['#2563eb', '#4f46e5']} style={styles.saveGrad}>
+                  <Text style={styles.saveText}>{saving ? 'Saving…' : 'Save Transaction'}</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -193,6 +419,11 @@ export default function TransactionsScreen() {
               <Text style={styles.summaryValue}>{money(totalIncome)}</Text>
             </View>
           </View>
+
+          <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
+            <Ionicons name="add-circle-outline" size={18} color="#fff" />
+            <Text style={styles.addButtonText}>Add Transaction</Text>
+          </TouchableOpacity>
         </LinearGradient>
 
         <View style={styles.body}>
@@ -325,6 +556,25 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#fff',
     letterSpacing: -0.5,
+  },
+  addButton: {
+    marginTop: 14,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(59,130,246,0.24)',
+    borderRadius: Radius.full,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(96,165,250,0.28)',
+  },
+  addButtonText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: 0.2,
   },
   body: {
     padding: 16,
@@ -495,5 +745,171 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
     marginTop: 4,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'flex-end',
+  },
+  modalCard: {
+    backgroundColor: Colors.bg,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 20,
+    maxHeight: '88%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 12,
+  },
+  modalKicker: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.mute2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 3,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: Colors.ink,
+    letterSpacing: -0.5,
+  },
+  modalBody: {
+    paddingBottom: 10,
+    gap: 12,
+  },
+  formGroup: {
+    gap: 7,
+  },
+  formRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  formLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.mute,
+    textTransform: 'uppercase',
+    letterSpacing: 0.7,
+  },
+  formInput: {
+    backgroundColor: Colors.surface,
+    borderWidth: 1.2,
+    borderColor: Colors.border2,
+    borderRadius: Radius.md,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: Colors.ink,
+  },
+  formTextarea: {
+    minHeight: 86,
+    textAlignVertical: 'top',
+  },
+  segmentWrap: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  segment: {
+    flex: 1,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border2,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  segmentActive: {
+    backgroundColor: Colors.blueTint,
+    borderColor: 'rgba(59,130,246,0.28)',
+  },
+  segmentText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.mute,
+  },
+  segmentTextActive: {
+    color: Colors.blue,
+  },
+  categoryWrap: {
+    gap: 8,
+    paddingVertical: 2,
+  },
+  categoryChip: {
+    borderRadius: Radius.full,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border2,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+  },
+  categoryChipActive: {
+    backgroundColor: Colors.blueTint,
+    borderColor: 'rgba(59,130,246,0.25)',
+  },
+  categoryChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.ink,
+  },
+  categoryChipTextActive: {
+    color: Colors.blue,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.md,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.border2,
+  },
+  toggleSub: {
+    fontSize: 11,
+    color: Colors.mute,
+    marginTop: 2,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingTop: 6,
+  },
+  cancelBtn: {
+    flex: 1,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border2,
+    backgroundColor: Colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+  },
+  cancelText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.ink3,
+  },
+  saveBtn: {
+    flex: 1.5,
+    borderRadius: Radius.md,
+    overflow: 'hidden',
+  },
+  saveGrad: {
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#fff',
   },
 });
