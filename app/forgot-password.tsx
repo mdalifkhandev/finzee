@@ -5,6 +5,7 @@ import {
   KeyboardAvoidingView, Platform, StatusBar, ActivityIndicator, Alert, RefreshControl, ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Colors, Shadow, Radius, Gradients } from '../constants/theme';
 import FinZeeLogo from '../components/FinZeeLogo';
@@ -51,7 +52,8 @@ export default function ForgotPasswordScreen() {
       <StatusBar barStyle="light-content" />
       <LinearGradient colors={['#06080f', '#0f172a', '#1a2444']} style={styles.hero}>
         <TouchableOpacity style={styles.back} onPress={() => router.back()}>
-          <Text style={styles.backText}>← Back</Text>
+          <Ionicons name="arrow-back" size={16} color="rgba(255,255,255,0.6)" />
+          <Text style={styles.backText}>Back</Text>
         </TouchableOpacity>
         <FinZeeLogo variant="light" width={140} />
         <Text style={styles.heroTitle}>Reset your <Text style={styles.heroBlue}>password.</Text></Text>
@@ -76,7 +78,7 @@ export default function ForgotPasswordScreen() {
           </>
         ) : (
           <View style={styles.successCard}>
-            <Text style={styles.successEmoji}>📬</Text>
+            <Ionicons name="mail-open-outline" size={52} color={Colors.blue} />
             <Text style={styles.successTitle}>Check your inbox</Text>
             <Text style={styles.successDesc}>We sent a password reset link to <Text style={styles.successEmail}>{email}</Text></Text>
             <Text style={styles.successNote}>Click the link in the email to set a new password. The link expires in 1 hour.</Text>

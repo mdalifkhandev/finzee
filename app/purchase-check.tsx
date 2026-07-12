@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors, Shadow, Radius, Gradients } from '../constants/theme';
 import FinZeeLogo from '../components/FinZeeLogo';
 import { useAuth } from '../hooks/useAuth';
@@ -17,10 +18,10 @@ import { CONFIG, DEV_SAMPLE } from '../constants/config';
 type Urgency = 'low' | 'medium' | 'high';
 type Mood    = 'stressed' | 'neutral' | 'happy';
 
-const MOODS: { key: Mood; emoji: string; label: string }[] = [
-  { key: 'stressed', emoji: '😰', label: 'Stressed' },
-  { key: 'neutral',  emoji: '😐', label: 'Neutral'  },
-  { key: 'happy',    emoji: '😊', label: 'Happy'    },
+const MOODS: { key: Mood; icon: string; label: string }[] = [
+  { key: 'stressed', icon: 'alert-circle-outline', label: 'Stressed' },
+  { key: 'neutral',  icon: 'remove-circle-outline', label: 'Neutral'  },
+  { key: 'happy',    icon: 'happy-outline', label: 'Happy'    },
 ];
 
 const CATEGORIES = ['Electronics', 'Clothing', 'Dining', 'Home', 'Fitness', 'Travel', 'Entertainment', 'Other'];
@@ -74,15 +75,15 @@ export default function PurchaseCheckScreen() {
       }
     }
     setSavedToPause(true);
-    Alert.alert('Added to Pause List ⏸', `We'll remind you about "${itemName}" in 24 hours. Take that time to reflect.`,
+    Alert.alert('Added to Pause List', `We'll remind you about "${itemName}" in 24 hours. Take that time to reflect.`,
       [{ text: 'View Pause List', onPress: () => router.push('/(tabs)/pause') }, { text: 'OK' }]
     );
   }
 
   const recConfig = result ? {
-    buy:   { emoji: '✅', label: 'Green Light',          desc: 'This fits your financial plan.',      bg: Colors.greenTint, color: '#065f46', border: Colors.green },
-    wait:  { emoji: '⏳', label: 'Sleep On It',          desc: 'Low urgency — wait 24 hours.',        bg: Colors.amberTint, color: '#92400e', border: Colors.amber },
-    pause: { emoji: '⏸️', label: 'Pause This Purchase', desc: 'High emotional risk detected.',       bg: Colors.redTint,   color: '#991b1b', border: Colors.red },
+    buy:   { emoji: 'checkmark-circle-outline', label: 'Green Light',          desc: 'This fits your financial plan.',      bg: Colors.greenTint, color: '#065f46', border: Colors.green },
+    wait:  { emoji: 'hourglass-outline', label: 'Sleep On It',          desc: 'Low urgency — wait 24 hours.',        bg: Colors.amberTint, color: '#92400e', border: Colors.amber },
+    pause: { emoji: 'pause-circle-outline', label: 'Pause This Purchase', desc: 'High emotional risk detected.',       bg: Colors.redTint,   color: '#991b1b', border: Colors.red },
   }[result.recommendation] : null;
 
   const riskColor = result ? { low: Colors.green, medium: Colors.amber, high: Colors.red }[result.emotionalRisk] : Colors.mute;
@@ -92,7 +93,7 @@ export default function PurchaseCheckScreen() {
       <StatusBar barStyle="light-content" />
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1 }}>
         <LinearGradient colors={['#06080f', '#0f172a', '#1a56db']} style={styles.hero}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}><Text style={styles.backText}>← Back</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}><Ionicons name="arrow-back" size={16} color="rgba(255,255,255,0.65)" /><Text style={styles.backText}>Back</Text></TouchableOpacity>
           <FinZeeLogo variant="light" width={120} />
           <Text style={styles.heroTitle}>Should I Buy This?</Text>
           <Text style={styles.heroSub}>FinZee AI evaluates your purchase before you spend</Text>
@@ -134,7 +135,7 @@ export default function PurchaseCheckScreen() {
             <View style={styles.moodRow}>
               {MOODS.map(m => (
                 <TouchableOpacity key={m.key} style={[styles.moodBtn, mood === m.key && styles.moodActive]} onPress={() => setMood(m.key)}>
-                  <Text style={styles.moodEmoji}>{m.emoji}</Text>
+                  <Ionicons name={m.icon as any} size={22} color={mood === m.key ? Colors.blue : Colors.mute} />
                   <Text style={[styles.moodLabel, mood === m.key && { color: Colors.blue }]}>{m.label}</Text>
                 </TouchableOpacity>
               ))}
@@ -155,7 +156,7 @@ export default function PurchaseCheckScreen() {
           {result && recConfig && (
             <View style={[styles.resultCard, Shadow.md]}>
               <View style={[styles.recHero, { backgroundColor: recConfig.bg, borderColor: recConfig.border }]}>
-                <Text style={styles.recEmoji}>{recConfig.emoji}</Text>
+                <Ionicons name={recConfig.emoji as any} size={40} color={recConfig.color} />
                 <Text style={[styles.recLabel, { color: recConfig.color }]}>{recConfig.label}</Text>
                 <Text style={[styles.recDesc, { color: recConfig.color + 'cc' }]}>{recConfig.desc}</Text>
               </View>
@@ -177,11 +178,11 @@ export default function PurchaseCheckScreen() {
               </View>
               {!savedToPause ? (
                 <TouchableOpacity style={styles.pauseCta} onPress={handleAddToPause}>
-                  <Text style={styles.pauseCtaText}>⏸  Add to 24-Hour Pause List</Text>
+                  <Text style={styles.pauseCtaText}>Add to 24-Hour Pause List</Text>
                 </TouchableOpacity>
               ) : (
                 <View style={styles.savedBanner}>
-                  <Text style={styles.savedBannerText}>✓ Added to your Pause List — we'll remind you in 24 hours.</Text>
+                  <Text style={styles.savedBannerText}>Added to your Pause List — we'll remind you in 24 hours.</Text>
                 </View>
               )}
             </View>

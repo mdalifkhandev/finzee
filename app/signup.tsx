@@ -6,6 +6,7 @@ import {
   StatusBar, ActivityIndicator, Alert, RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Colors, Shadow, Radius, Gradients } from '../constants/theme';
 import FinZeeLogo from '../components/FinZeeLogo';
@@ -74,7 +75,7 @@ export default function SignUpScreen() {
         [{ text: 'OK', onPress: () => router.replace('/login') }]
       );
     } else {
-      Alert.alert('Check your email ✉️', 'We sent you a confirmation link. Click it to activate your account.',
+      Alert.alert('Check your email', 'We sent you a confirmation link. Click it to activate your account.',
         [{ text: 'OK', onPress: () => router.replace('/login') }]
       );
     }
@@ -152,7 +153,7 @@ export default function SignUpScreen() {
 
           <TouchableOpacity style={styles.termsRow} onPress={() => setConsentTerms(v => !v)}>
             <View style={[styles.checkbox, consentTerms && { backgroundColor: Colors.blue, borderColor: Colors.blue }]}>
-              {consentTerms && <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800' }}>✓</Text>}
+              {consentTerms && <Ionicons name="checkmark" size={12} color="#fff" />}
             </View>
             <Text style={styles.termsText}>
               I agree to the{' '}
@@ -177,7 +178,7 @@ export default function SignUpScreen() {
           </TouchableOpacity>
 
           <View style={styles.privacyNote}>
-            <Text style={styles.privacyIcon}>🔒</Text>
+            <Ionicons name="lock-closed-outline" size={16} color={Colors.blue} />
             <Text style={styles.privacyText}>FinZee never stores bank credentials. Financial connections use secure tokenized providers. You can disconnect anytime.</Text>
           </View>
         </View>

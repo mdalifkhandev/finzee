@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, StatusBar, Alert, ActivityIndicator, Linking, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Colors, Shadow, Radius, Gradients } from '../constants/theme';
 import FinZeeLogo from '../components/FinZeeLogo';
@@ -12,22 +13,22 @@ import { CONFIG } from '../constants/config';
 interface Wearable { id: 'apple_health' | 'oura' | 'garmin' | 'fitbit' | 'google_fit'; name: string; brand: string; icon: string; description: string; features: string[]; available: boolean; comingSoon?: boolean; }
 
 const WEARABLES: Wearable[] = [
-  { id: 'apple_health', name: 'Apple Health', brand: 'Apple', icon: '❤️', description: 'Connect Apple Watch and iPhone health data including steps, sleep, heart rate, and HRV.', features: ['Steps', 'Sleep analysis', 'Heart rate', 'HRV', 'Blood oxygen', 'Mindfulness'], available: Platform.OS === 'ios' },
-  { id: 'oura', name: 'Oura Ring', brand: 'Oura', icon: '💍', description: 'The most accurate sleep and recovery tracker. Connects via Oura Cloud API.', features: ['Sleep score', 'Deep sleep', 'REM sleep', 'HRV', 'Readiness score', 'SPO₂'], available: true },
-  { id: 'garmin', name: 'Garmin Connect', brand: 'Garmin', icon: '⌚', description: 'Connect your Garmin device for stress tracking, Body Battery, and fitness data.', features: ['Body Battery', 'Stress score', 'Sleep', 'HRV', 'Steps', 'Active minutes'], available: true },
-  { id: 'fitbit', name: 'Fitbit', brand: 'Google', icon: '📏', description: 'Connect your Fitbit device for sleep, activity, and heart rate data.', features: ['Sleep stages', 'Heart rate', 'Steps', 'Active zone minutes', 'SpO₂'], available: true },
-  { id: 'google_fit', name: 'Google Fit', brand: 'Google', icon: '🏃', description: 'Android health data hub — steps, heart rate, and activity.', features: ['Steps', 'Heart rate', 'Active minutes', 'Calories'], available: Platform.OS === 'android', comingSoon: true },
+  { id: 'apple_health', name: 'Apple Health', brand: 'Apple', icon: 'heart-outline', description: 'Connect Apple Watch and iPhone health data including steps, sleep, heart rate, and HRV.', features: ['Steps', 'Sleep analysis', 'Heart rate', 'HRV', 'Blood oxygen', 'Mindfulness'], available: Platform.OS === 'ios' },
+  { id: 'oura', name: 'Oura Ring', brand: 'Oura', icon: 'ellipse-outline', description: 'The most accurate sleep and recovery tracker. Connects via Oura Cloud API.', features: ['Sleep score', 'Deep sleep', 'REM sleep', 'HRV', 'Readiness score', 'SPO₂'], available: true },
+  { id: 'garmin', name: 'Garmin Connect', brand: 'Garmin', icon: 'watch-outline', description: 'Connect your Garmin device for stress tracking, Body Battery, and fitness data.', features: ['Body Battery', 'Stress score', 'Sleep', 'HRV', 'Steps', 'Active minutes'], available: true },
+  { id: 'fitbit', name: 'Fitbit', brand: 'Google', icon: 'bar-chart-outline', description: 'Connect your Fitbit device for sleep, activity, and heart rate data.', features: ['Sleep stages', 'Heart rate', 'Steps', 'Active zone minutes', 'SpO₂'], available: true },
+  { id: 'google_fit', name: 'Google Fit', brand: 'Google', icon: 'walk-outline', description: 'Android health data hub — steps, heart rate, and activity.', features: ['Steps', 'Heart rate', 'Active minutes', 'Calories'], available: Platform.OS === 'android', comingSoon: true },
 ];
 
 function WearableCard({ wearable, connected, onConnect, onDisconnect, loading }: { wearable: Wearable; connected: boolean; onConnect: () => void; onDisconnect: () => void; loading: boolean }) {
   return (
     <View style={[styles.wCard, Shadow.sm, !wearable.available && { opacity: 0.5 }]}>
       <View style={styles.wCardTop}>
-        <View style={styles.wIconWrap}><Text style={styles.wIcon}>{wearable.icon}</Text></View>
+        <View style={styles.wIconWrap}><Ionicons name={wearable.icon as any} size={22} color={Colors.blue} /></View>
         <View style={styles.wInfo}>
           <View style={styles.wNameRow}>
             <Text style={styles.wName}>{wearable.name}</Text>
-            {connected && <View style={styles.connectedBadge}><Text style={styles.connectedBadgeText}>● Connected</Text></View>}
+          {connected && <View style={styles.connectedBadge}><Ionicons name="checkmark-circle-outline" size={12} color="#065f46" /><Text style={styles.connectedBadgeText}>Connected</Text></View>}
             {wearable.comingSoon && <View style={styles.soonBadge}><Text style={styles.soonBadgeText}>Coming Soon</Text></View>}
           </View>
           <Text style={styles.wBrand}>{wearable.brand}</Text>
@@ -70,22 +71,22 @@ export default function ConnectWearableScreen() {
       switch (wearable.id) {
         case 'apple_health': {
           const ok = Platform.OS === 'ios' ? await requestAppleHealthPermissions() : await requestAndroidHealthPermissions();
-          if (ok) { setConnected(prev => ({ ...prev, apple_health: true })); Alert.alert('Apple Health Connected ✓', 'FinZee AI can now read your health data.'); }
+          if (ok) { setConnected(prev => ({ ...prev, apple_health: true })); Alert.alert('Apple Health Connected', 'FinZee AI can now read your health data.'); }
           else Alert.alert('EAS Build Required', 'HealthKit requires an EAS Development Build.\n\neas build --platform ios --profile development');
           break;
         }
         case 'oura': {
-          if (CONFIG.DEV_MODE) { setConnected(prev => ({ ...prev, oura: true })); Alert.alert('Oura Ring Connected ✓', '[DEV MODE] Simulated. Real OAuth requires EXPO_PUBLIC_OURA_CLIENT_ID.'); }
+          if (CONFIG.DEV_MODE) { setConnected(prev => ({ ...prev, oura: true })); Alert.alert('Oura Ring Connected', '[DEV MODE] Simulated. Real OAuth requires EXPO_PUBLIC_OURA_CLIENT_ID.'); }
           else await Linking.openURL(getOuraAuthUrl('finzeeai://oura-callback'));
           break;
         }
         case 'garmin': {
-          if (CONFIG.DEV_MODE) { setConnected(prev => ({ ...prev, garmin: true })); Alert.alert('Garmin Connected ✓', '[DEV MODE] Simulated. Real flow requires backend Garmin OAuth1 setup.'); }
+          if (CONFIG.DEV_MODE) { setConnected(prev => ({ ...prev, garmin: true })); Alert.alert('Garmin Connected', '[DEV MODE] Simulated. Real flow requires backend Garmin OAuth1 setup.'); }
           else { const authUrl = await initiateGarminAuth(user.id); if (authUrl) await Linking.openURL(authUrl); }
           break;
         }
         case 'fitbit': {
-          if (CONFIG.DEV_MODE) { setConnected(prev => ({ ...prev, fitbit: true })); Alert.alert('Fitbit Connected ✓', '[DEV MODE] Simulated. Real flow requires FITBIT_CLIENT_ID on backend.'); }
+          if (CONFIG.DEV_MODE) { setConnected(prev => ({ ...prev, fitbit: true })); Alert.alert('Fitbit Connected', '[DEV MODE] Simulated. Real flow requires FITBIT_CLIENT_ID on backend.'); }
           else await Linking.openURL(`https://www.fitbit.com/oauth2/authorize?response_type=code&client_id=${process.env.EXPO_PUBLIC_FITBIT_CLIENT_ID}&scope=activity%20heartrate%20sleep%20oxygen_saturation&redirect_uri=finzeeai://fitbit-callback`);
           break;
         }
@@ -132,18 +133,18 @@ export default function ConnectWearableScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.blue} />}
       >
         <LinearGradient colors={['#0f172a', '#1e1b4b', '#4c1d95']} style={styles.hero}>
-          <TouchableOpacity style={styles.back} onPress={() => router.back()}><Text style={styles.backText}>← Back</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.back} onPress={() => router.back()}><Ionicons name="arrow-back" size={16} color="rgba(255,255,255,0.85)" /><Text style={styles.backText}>Back</Text></TouchableOpacity>
           <FinZeeLogo variant="light" width={130} />
           <Text style={styles.heroTitle}>Connect your <Text style={styles.heroAccent}>wearable.</Text></Text>
           <Text style={styles.heroSub}>FinZee AI connects your body signals to your spending behavior. The smarter your data, the smarter your decisions.</Text>
-          {connectedCount > 0 && <View style={styles.connectedPill}><Text style={styles.connectedPillText}>✓ {connectedCount} device{connectedCount > 1 ? 's' : ''} connected</Text></View>}
+          {connectedCount > 0 && <View style={styles.connectedPill}><Ionicons name="checkmark-circle-outline" size={12} color="#34d399" /><Text style={styles.connectedPillText}>{connectedCount} device{connectedCount > 1 ? 's' : ''} connected</Text></View>}
         </LinearGradient>
 
         <View style={styles.body}>
           <View style={[styles.whyCard, Shadow.sm]}>
             <Text style={styles.whyTitle}>Why connect a wearable?</Text>
-            {[{ icon: '😰', text: 'Detect stress spending before it happens' }, { icon: '🌙', text: 'Link poor sleep nights to impulse purchases' }, { icon: '📈', text: 'Boost your financial wellness score with health data' }, { icon: '🧠', text: 'Get AI insights that connect body signals to money habits' }]
-              .map((w, i) => <View key={i} style={styles.whyRow}><Text style={styles.whyIcon}>{w.icon}</Text><Text style={styles.whyText}>{w.text}</Text></View>)}
+            {[{ icon: 'alert-circle-outline', text: 'Detect stress spending before it happens' }, { icon: 'moon-outline', text: 'Link poor sleep nights to impulse purchases' }, { icon: 'trending-up-outline', text: 'Boost your financial wellness score with health data' }, { icon: 'sparkles-outline', text: 'Get AI insights that connect body signals to money habits' }]
+              .map((w, i) => <View key={i} style={styles.whyRow}><Ionicons name={w.icon as any} size={16} color={Colors.blue} /><Text style={styles.whyText}>{w.text}</Text></View>)}
           </View>
 
           <Text style={styles.sectionTitle}>Choose your device</Text>
@@ -152,11 +153,11 @@ export default function ConnectWearableScreen() {
           {connectedCount > 0 && (
             <>
               <TouchableOpacity style={styles.testBtn} onPress={testFetch} disabled={!!loading['test']}>
-                <Text style={styles.testBtnText}>{loading['test'] ? 'Fetching data…' : '🧪 Test: Fetch Today\'s Metrics'}</Text>
+                <Text style={styles.testBtnText}>{loading['test'] ? 'Fetching data…' : 'Test: Fetch Today\'s Metrics'}</Text>
               </TouchableOpacity>
               {testData && (
                 <View style={[styles.testResult, Shadow.sm]}>
-                  <Text style={styles.testResultTitle}>✓ Live data from: {testData.source}</Text>
+                  <Text style={styles.testResultTitle}>Live data from: {testData.source}</Text>
                   {[{ label: 'Steps', value: testData.steps?.toLocaleString() }, { label: 'Sleep', value: `${testData.sleepHours?.toFixed(1)}h` }, { label: 'Heart Rate', value: `${testData.heartRate} bpm` }, { label: 'HRV', value: testData.hrv ? `${testData.hrv} ms` : 'N/A' }, { label: 'Stress', value: testData.stressIndicator }, { label: 'Readiness', value: testData.readinessScore ? `${testData.readinessScore}/100` : 'N/A' }]
                     .map(r => <View key={r.label} style={styles.testRow}><Text style={styles.testLabel}>{r.label}</Text><Text style={styles.testValue}>{r.value}</Text></View>)}
                 </View>
@@ -165,7 +166,7 @@ export default function ConnectWearableScreen() {
           )}
 
           <View style={styles.privacyNote}>
-            <Text style={styles.privacyIcon}>🔒</Text>
+            <Ionicons name="lock-closed-outline" size={18} color={Colors.blue} />
             <Text style={styles.privacyText}>FinZee stores only summarized daily metrics needed for insights. Raw biometric data is never sold or shared. You can disconnect any device and delete your data at any time.</Text>
           </View>
           <View style={{ height: 40 }} />

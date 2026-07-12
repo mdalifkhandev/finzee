@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, StatusB
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Defs, LinearGradient as SvgGrad, Stop } from 'react-native-svg';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors, Shadow, Radius, Gradients } from '../../constants/theme';
 import { useAuth } from '../../hooks/useAuth';
 import { getDailyMetrics, requestHealthPermissions } from '../../services/healthService';
@@ -26,7 +27,7 @@ function WellnessRing({ score, size = 80 }: { score: number; size?: number }) {
 function MetricCard({ icon, label, value, unit, trend, trendColor, bgColor }: { icon: string; label: string; value: string; unit?: string; trend: string; trendColor: string; bgColor: string; iconColor: string }) {
   return (
     <View style={[mc.card, Shadow.sm]}>
-      <View style={mc.top}><View style={[mc.iconBox, { backgroundColor: bgColor }]}><Text style={{ fontSize: 15 }}>{icon}</Text></View><Text style={[mc.trend, { color: trendColor }]}>{trend}</Text></View>
+      <View style={mc.top}><View style={[mc.iconBox, { backgroundColor: bgColor }]}><Ionicons name={icon as any} size={16} color={trendColor} /></View><Text style={[mc.trend, { color: trendColor }]}>{trend}</Text></View>
       <Text style={mc.label}>{label}</Text>
       <Text style={mc.value}>{value}{unit ? <Text style={mc.unit}> {unit}</Text> : null}</Text>
     </View>
@@ -111,7 +112,7 @@ export default function HealthScreen() {
             <WellnessRing score={wellnessScore} size={72} />
           </View>
           <Text style={styles.wellnessScore}>{wellnessScore}<Text style={{ fontSize: 16, opacity: 0.5 }}>/100</Text></Text>
-          <Text style={styles.wellnessLabel}>{wellnessScore >= 80 ? '🟢 Optimal Wellness' : wellnessScore >= 60 ? '🟡 Moderate Wellness' : '🔴 Low Wellness'}</Text>
+          <Text style={styles.wellnessLabel}>{wellnessScore >= 80 ? 'Optimal Wellness' : wellnessScore >= 60 ? 'Moderate Wellness' : 'Low Wellness'}</Text>
           <Text style={styles.wellnessDesc}>{wellnessScore >= 80 ? 'Your body signals are strong. Low financial risk today.' : 'Sleep and stress indicators suggest elevated spending risk today.'}</Text>
         </LinearGradient>
 
@@ -128,12 +129,12 @@ export default function HealthScreen() {
 
           <Text style={styles.sectionTitle}>Today's Metrics</Text>
           <View style={styles.metricsGrid}>
-            <MetricCard icon="❤️" label="Heart Rate" value={String(metrics?.heartRate ?? 72)} unit="bpm" trend="→ Normal" trendColor={Colors.amber} bgColor="#fff1f1" iconColor={Colors.red} />
-            <MetricCard icon="🌙" label="Sleep" value={String(metrics?.sleepHours ?? 6.2)} unit="hrs" trend="↓ Below target" trendColor={Colors.red} bgColor={Colors.blueTint} iconColor={Colors.blue} />
+            <MetricCard icon="heart-outline" label="Heart Rate" value={String(metrics?.heartRate ?? 72)} unit="bpm" trend="Normal" trendColor={Colors.amber} bgColor="#fff1f1" iconColor={Colors.red} />
+            <MetricCard icon="moon-outline" label="Sleep" value={String(metrics?.sleepHours ?? 6.2)} unit="hrs" trend="Below target" trendColor={Colors.red} bgColor={Colors.blueTint} iconColor={Colors.blue} />
           </View>
           <View style={[styles.metricsGrid, { marginTop: 8 }]}>
-            <MetricCard icon="💟" label="Steps" value={(metrics?.steps ?? 7420).toLocaleString()} unit="" trend="↑ On track" trendColor={Colors.green} bgColor={Colors.greenTint} iconColor={Colors.green} />
-            <MetricCard icon="⚡" label="HRV" value={String(metrics?.restingHeartRate ?? 58)} unit="ms" trend="→ Average" trendColor={Colors.amber} bgColor={Colors.purpleTint} iconColor={Colors.purple} />
+            <MetricCard icon="walk-outline" label="Steps" value={(metrics?.steps ?? 7420).toLocaleString()} unit="" trend="On track" trendColor={Colors.green} bgColor={Colors.greenTint} iconColor={Colors.green} />
+            <MetricCard icon="pulse-outline" label="HRV" value={String(metrics?.restingHeartRate ?? 58)} unit="ms" trend="Average" trendColor={Colors.amber} bgColor={Colors.purpleTint} iconColor={Colors.purple} />
           </View>
 
           <View style={[styles.card, { marginTop: 16 }]}>
@@ -153,7 +154,7 @@ export default function HealthScreen() {
           </View>
 
           <LinearGradient colors={['#0f172a', '#1e1b4b']} style={styles.corrCard}>
-            <View style={styles.corrChip}><Text style={styles.corrChipText}>🧠  FinZee Intelligence</Text></View>
+            <View style={styles.corrChip}><Ionicons name="sparkles-outline" size={11} color="#c4b5fd" /><Text style={styles.corrChipText}>FinZee Intelligence</Text></View>
             <Text style={styles.corrTitle}>Your body affects your spending</Text>
             <Text style={styles.corrDesc}>FinZee detected behavioral patterns linking your health signals to financial decisions.</Text>
             {[
@@ -169,10 +170,10 @@ export default function HealthScreen() {
           </LinearGradient>
 
           <Text style={styles.sectionTitle}>Connected Devices</Text>
-          {[{ name: 'Apple Watch', sub: 'Steps, HR, HRV, Sleep', icon: '⌚' }, { name: 'Oura Ring', sub: 'Deep sleep + recovery', icon: '💍' }, { name: 'Garmin', sub: 'HRV + stress tracking', icon: '🏃' }]
+          {[{ name: 'Apple Watch', sub: 'Steps, HR, HRV, Sleep', icon: 'watch-outline' }, { name: 'Oura Ring', sub: 'Deep sleep + recovery', icon: 'ellipse-outline' }, { name: 'Garmin', sub: 'HRV + stress tracking', icon: 'fitness-outline' }]
             .map(d => (
               <TouchableOpacity key={d.name} style={styles.deviceCard}>
-                <View style={styles.deviceIcon}><Text style={{ fontSize: 22 }}>{d.icon}</Text></View>
+                <View style={styles.deviceIcon}><Ionicons name={d.icon as any} size={22} color={Colors.blue} /></View>
                 <View style={{ flex: 1 }}><Text style={styles.deviceName}>{d.name}</Text><Text style={styles.deviceSub}>{d.sub}</Text></View>
                 <Text style={{ color: Colors.mute2, fontSize: 18 }}>›</Text>
               </TouchableOpacity>

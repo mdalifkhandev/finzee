@@ -5,6 +5,7 @@ import {
   Modal, TextInput, Alert, ActivityIndicator, Platform, StatusBar, RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors, Shadow, Radius, Gradients } from '../../constants/theme';
 import FinZeeLogo from '../../components/FinZeeLogo';
 import { useAuth } from '../../hooks/useAuth';
@@ -35,7 +36,7 @@ function mapGoalRow(row: GoalRow): Goal {
     id: row.id,
     user_id: row.user_id,
     name: row.name,
-    emoji: row.icon || '🎯',
+    emoji: row.icon || 'trophy-outline',
     target: Number(row.target_amount) || 0,
     current: Number(row.current_amount) || 0,
     deadline: row.target_date || undefined,
@@ -43,8 +44,40 @@ function mapGoalRow(row: GoalRow): Goal {
   };
 }
 
-const EMOJI_OPTIONS = ['🏠','✈️','🚗','🎓','💍','🛡️','💻','🏻','🌴','💰','🎯','🏦'];
+const GOAL_ICON_OPTIONS = [
+  'home-outline',
+  'airplane-outline',
+  'car-outline',
+  'school-outline',
+  'heart-outline',
+  'shield-checkmark-outline',
+  'laptop-outline',
+  'sunny-outline',
+  'cash-outline',
+  'trophy-outline',
+  'business-outline',
+  'card-outline',
+];
 const TAB_BAR_SPACING = Platform.OS === 'ios' ? 50 : 30;
+
+function resolveGoalIcon(nameOrEmoji: string) {
+  if (!nameOrEmoji) return 'trophy-outline';
+  if (nameOrEmoji.includes('-outline')) return nameOrEmoji;
+  const map: Record<string, string> = {
+    '\u{1F3E0}': 'home-outline',
+    '\u{2708}\u{FE0F}': 'airplane-outline',
+    '\u{1F697}': 'car-outline',
+    '\u{1F393}': 'school-outline',
+    '\u{1F48D}': 'heart-outline',
+    '\u{1F6E1}\u{FE0F}': 'shield-checkmark-outline',
+    '\u{1F4BB}': 'laptop-outline',
+    '\u{1F334}': 'sunny-outline',
+    '\u{1F4B0}': 'cash-outline',
+    '\u{1F3AF}': 'trophy-outline',
+    '\u{1F3E6}': 'business-outline',
+  };
+  return map[nameOrEmoji] || 'trophy-outline';
+}
 
 function GoalCard({ goal, onCelebrate }: { goal: Goal; onCelebrate: (g: Goal) => void }) {
   const pct      = Math.min(Math.round((goal.current / goal.target) * 100), 100);
@@ -53,8 +86,8 @@ function GoalCard({ goal, onCelebrate }: { goal: Goal; onCelebrate: (g: Goal) =>
   return (
     <TouchableOpacity style={[styles.goalCard, Shadow.sm]} onPress={() => complete && onCelebrate(goal)} activeOpacity={0.85}>
       <View style={styles.goalTop}>
-        <View style={styles.goalLeft}>
-          <View style={styles.goalEmoji}><Text style={{ fontSize: 22 }}>{goal.emoji}</Text></View>
+          <View style={styles.goalLeft}>
+          <View style={styles.goalEmoji}><Ionicons name={resolveGoalIcon(goal.emoji) as any} size={24} color={Colors.blue} /></View>
           <View>
             <Text style={styles.goalName}>{goal.name}</Text>
             <Text style={styles.goalSub}>{complete ? 'Goal complete!' : `$${(goal.target - goal.current).toLocaleString()} to go`}</Text>
@@ -66,7 +99,7 @@ function GoalCard({ goal, onCelebrate }: { goal: Goal; onCelebrate: (g: Goal) =>
       <View style={styles.goalBot}>
         <Text style={styles.goalBotLeft}>${goal.current.toLocaleString()} of ${goal.target.toLocaleString()}</Text>
         {complete
-          ? <TouchableOpacity onPress={() => onCelebrate(goal)}><Text style={styles.celebrateBtn}>View achievement 🎉</Text></TouchableOpacity>
+          ? <TouchableOpacity onPress={() => onCelebrate(goal)}><Text style={styles.celebrateBtn}>View achievement</Text></TouchableOpacity>
           : <Text style={styles.goalBotRight}>{goal.deadline ? new Date(goal.deadline).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'No deadline'}</Text>
         }
       </View>
@@ -82,10 +115,10 @@ function CelebrationModal({ goal, onClose }: { goal: Goal | null; onClose: () =>
         <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} />
         <View style={cel.sheet}>
           <View style={cel.pip} />
-          <Text style={cel.emoji}>🎉</Text>
+          <View style={cel.emoji}><Ionicons name="trophy-outline" size={40} color={Colors.blue} /></View>
           <Text style={cel.title}>Goal Achieved!</Text>
           <Text style={cel.desc}>You've fully funded your {goal.name}. This is a major milestone in your financial journey.</Text>
-          <View style={cel.box}><Text style={cel.amount}>${goal.target.toLocaleString()}</Text><Text style={cel.tag}>{goal.name} — Complete ✅</Text></View>
+          <View style={cel.box}><Text style={cel.amount}>${goal.target.toLocaleString()}</Text><Text style={cel.tag}>{goal.name} — Complete</Text></View>
           <TouchableOpacity style={cel.ctaWrap} onPress={onClose}><LinearGradient colors={Gradients.blue} style={cel.cta}><Text style={cel.ctaText}>Continue My Journey →</Text></LinearGradient></TouchableOpacity>
         </View>
       </View>
@@ -97,13 +130,13 @@ function AddGoalModal({ visible, onClose, onAdd }: { visible: boolean; onClose: 
   const [name, setName]       = useState('');
   const [target, setTarget]   = useState('');
   const [current, setCurrent] = useState('0');
-  const [emoji, setEmoji]     = useState('🎯');
+  const [emoji, setEmoji]     = useState('trophy-outline');
   const [deadline, setDeadline] = useState('');
 
   function handleAdd() {
     if (!name.trim() || !target.trim()) { Alert.alert('Missing fields', 'Please enter a goal name and target amount.'); return; }
     onAdd({ name: name.trim(), emoji, target: parseFloat(target), current: parseFloat(current) || 0, deadline: deadline || undefined });
-    setName(''); setTarget(''); setCurrent('0'); setEmoji('🎯'); setDeadline('');
+    setName(''); setTarget(''); setCurrent('0'); setEmoji('trophy-outline'); setDeadline('');
     onClose();
   }
 
@@ -114,9 +147,14 @@ function AddGoalModal({ visible, onClose, onAdd }: { visible: boolean; onClose: 
         <ScrollView style={add.sheet} keyboardShouldPersistTaps="handled">
           <View style={add.pip} />
           <Text style={add.title}>New Financial Goal</Text>
-          <Text style={add.label}>Choose an emoji</Text>
+          <Text style={add.label}>Choose an icon</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={add.emojiScroll}>
-            {EMOJI_OPTIONS.map(e => <TouchableOpacity key={e} style={[add.emojiBtn, emoji === e && add.emojiBtnSel]} onPress={() => setEmoji(e)}><Text style={{ fontSize: 22 }}>{e}</Text></TouchableOpacity>)}
+            {GOAL_ICON_OPTIONS.map(e => (
+              <TouchableOpacity key={e} style={[add.emojiBtn, emoji === e && add.emojiBtnSel]} onPress={() => setEmoji(e)}>
+                <Ionicons name={e as any} size={24} color={emoji === e ? '#fff' : Colors.blue} />
+                {emoji === e && <View style={add.selectedCheck}><Ionicons name="checkmark" size={10} color="#fff" /></View>}
+              </TouchableOpacity>
+            ))}
           </ScrollView>
           {[
             { label: 'Goal Name', value: name, set: setName, placeholder: 'e.g. House Down Payment', type: 'default' },
@@ -213,7 +251,7 @@ export default function GoalsScreen() {
             ? <ActivityIndicator color={Colors.blue} style={{ marginTop: 40 }} />
             : goals.length === 0
               ? <View style={styles.emptyState}>
-                  <Text style={styles.emptyEmoji}>🎯</Text>
+                  <Ionicons name="trophy-outline" size={40} color={Colors.blue} />
                   <Text style={styles.emptyTitle}>No goals yet</Text>
                   <Text style={styles.emptySub}>Add your first goal to start tracking progress here.</Text>
                 </View>
@@ -223,7 +261,7 @@ export default function GoalsScreen() {
             <LinearGradient colors={Gradients.blue} style={styles.addBtn}><Text style={styles.addBtnText}>+ Add New Goal</Text></LinearGradient>
           </TouchableOpacity>
           <View style={styles.nudge}>
-            <Text style={styles.nudgeEmoji}>💡</Text>
+            <Ionicons name="bulb-outline" size={18} color="#d97706" />
             <Text style={styles.nudgeText}>FinZee AI is tracking your goals against your spending. Ask the AI Coach for a personalized savings plan.</Text>
           </View>
           <View style={{ height: 32 }} />
@@ -276,7 +314,7 @@ const cel = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(6,8,15,0.65)', justifyContent: 'flex-end' },
   sheet:   { backgroundColor: Colors.surface, borderRadius: 30, padding: 24, paddingBottom: 40, margin: 8 },
   pip:     { width: 40, height: 4, backgroundColor: Colors.bg2, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-  emoji:   { fontSize: 52, textAlign: 'center', marginBottom: 8 },
+  emoji:   { height: 56, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   title:   { fontSize: 26, fontWeight: '800', color: Colors.ink, textAlign: 'center', letterSpacing: -1, marginBottom: 6 },
   desc:    { fontSize: 13, color: Colors.mute, textAlign: 'center', lineHeight: 19, marginBottom: 18 },
   box:     { backgroundColor: Colors.greenTint, borderRadius: 16, padding: 16, alignItems: 'center', marginBottom: 18 },
@@ -293,8 +331,9 @@ const add = StyleSheet.create({
   title:      { fontSize: 20, fontWeight: '800', color: Colors.ink, letterSpacing: -0.5, marginBottom: 16 },
   label:      { fontSize: 11, fontWeight: '700', color: Colors.mute, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 8 },
   emojiScroll:{ marginBottom: 16 },
-  emojiBtn:   { width: 46, height: 46, borderRadius: 13, backgroundColor: Colors.surface, alignItems: 'center', justifyContent: 'center', marginRight: 8, borderWidth: 1.5, borderColor: Colors.border },
-  emojiBtnSel:{ borderColor: Colors.blue, backgroundColor: Colors.blueTint },
+  emojiBtn:   { width: 46, height: 46, borderRadius: 13, backgroundColor: Colors.surface, alignItems: 'center', justifyContent: 'center', marginRight: 8, borderWidth: 1.5, borderColor: Colors.border, position: 'relative' },
+  emojiBtnSel:{ borderColor: Colors.blue, backgroundColor: Colors.blue, shadowColor: '#1d4ed8', shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
+  selectedCheck:{ position: 'absolute', right: -2, top: -2, width: 14, height: 14, borderRadius: 7, backgroundColor: '#16a34a', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#fff' },
   fieldWrap:  { marginBottom: 12 },
   fieldLabel: { fontSize: 11, fontWeight: '700', color: Colors.mute, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 6 },
   input:      { backgroundColor: Colors.surface, borderWidth: 1.5, borderColor: Colors.border, borderRadius: Radius.md, padding: 13, fontSize: 15, color: Colors.ink },

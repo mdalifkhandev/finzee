@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, Platform, StatusBar, Share, RefreshControl, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors, Shadow, Radius, Gradients } from '../../constants/theme';
 import FinZeeLogo from '../../components/FinZeeLogo';
 import { useAuth } from '../../hooks/useAuth';
@@ -16,11 +17,13 @@ function SectionHeader({ title }: { title: string }) {
   return <Text style={styles.sectionHeader}>{title}</Text>;
 }
 
-function SettingsRow({ icon, label, sub, value, onChange, onPress, danger = false }: { icon: string; label: string; sub?: string; value?: boolean; onChange?: (v: boolean) => void; onPress?: () => void; danger?: boolean }) {
+function SettingsRow({ iconName, label, sub, value, onChange, onPress, danger = false }: { iconName: string; label: string; sub?: string; value?: boolean; onChange?: (v: boolean) => void; onPress?: () => void; danger?: boolean }) {
   return (
     <TouchableOpacity style={styles.row} onPress={onPress} disabled={!onPress && onChange === undefined} activeOpacity={onPress ? 0.7 : 1}>
       <View style={styles.rowLeft}>
-        <Text style={styles.rowIcon}>{icon}</Text>
+        <View style={styles.rowIconWrap}>
+          <Ionicons name={iconName as any} size={18} color={danger ? Colors.red : Colors.blue} />
+        </View>
         <View style={{ flex: 1 }}>
           <Text style={[styles.rowLabel, danger && { color: Colors.red }]}>{label}</Text>
           {sub && <Text style={styles.rowSub}>{sub}</Text>}
@@ -242,7 +245,7 @@ export default function ProfileScreen() {
               <View>
                 <Text style={styles.heroName}>{profileName}</Text>
                 <Text style={styles.heroEmail}>{user?.email || 'user@finzee.ai'}</Text>
-                <View style={styles.memberBadge}><Text style={styles.memberBadgeText}>❖ FinZee Member</Text></View>
+                <View style={styles.memberBadge}><Ionicons name="sparkles-outline" size={12} color="#c4b5fd" /><Text style={styles.memberBadgeText}>FinZee Member</Text></View>
               </View>
             </View>
             <FinZeeLogo variant="light" width={80} />
@@ -256,24 +259,24 @@ export default function ProfileScreen() {
         <View style={styles.body}>
           <SectionHeader title="Connected Services" />
           <View style={styles.card}>
-            <SettingsRow icon="🏦" label="Bank Account" sub="Not connected — tap to connect" onPress={() => router.push('/connect-bank')} />
-            <SettingsRow icon="⌚" label="Apple Health" sub="Not connected" onPress={() => router.push('/(tabs)/health')} />
-            <SettingsRow icon="💍" label="Oura Ring" sub="Connect for deep sleep + HRV data" onPress={() => router.push('/connect-wearable')} />
+            <SettingsRow iconName="card-outline" label="Bank Account" sub="Not connected — tap to connect" onPress={() => router.push('/connect-bank')} />
+            <SettingsRow iconName="fitness-outline" label="Apple Health" sub="Not connected" onPress={() => router.push('/(tabs)/health')} />
+            <SettingsRow iconName="ellipse-outline" label="Oura Ring" sub="Connect for deep sleep + HRV data" onPress={() => router.push('/connect-wearable')} />
           </View>
 
           <SectionHeader title="Your Data, Your Control" />
           <View style={styles.card}>
-            <SettingsRow icon="🏦" label="Financial data usage" sub="Allow FinZee to analyze your transactions" value={consentFinancial} onChange={v => { setConsentFinancial(v); updateConsent('financial_data', v); }} />
-            <SettingsRow icon="❤️" label="Health data usage" sub="Allow FinZee to read your health metrics" value={consentHealth} onChange={v => { setConsentHealth(v); updateConsent('health_data', v); }} />
-            <SettingsRow icon="🧠" label="AI personalization" sub="Allow FinZee AI to generate tailored insights" value={consentAI} onChange={v => { setConsentAI(v); updateConsent('ai_personalization', v); }} />
-            <SettingsRow icon="🔔" label="Push reminders" sub="Pause list countdowns and wellness nudges" value={consentPush} onChange={v => { setConsentPush(v); updateConsent('push_reminders', v); }} />
+            <SettingsRow iconName="wallet-outline" label="Financial data usage" sub="Allow FinZee to analyze your transactions" value={consentFinancial} onChange={v => { setConsentFinancial(v); updateConsent('financial_data', v); }} />
+            <SettingsRow iconName="heart-outline" label="Health data usage" sub="Allow FinZee to read your health metrics" value={consentHealth} onChange={v => { setConsentHealth(v); updateConsent('health_data', v); }} />
+            <SettingsRow iconName="sparkles-outline" label="AI personalization" sub="Allow FinZee AI to generate tailored insights" value={consentAI} onChange={v => { setConsentAI(v); updateConsent('ai_personalization', v); }} />
+            <SettingsRow iconName="notifications-outline" label="Push reminders" sub="Pause list countdowns and wellness nudges" value={consentPush} onChange={v => { setConsentPush(v); updateConsent('push_reminders', v); }} />
           </View>
 
           <SectionHeader title="Privacy & Security" />
           <View style={styles.card}>
-            <SettingsRow icon="🔒" label="Privacy Policy" onPress={() => router.push('/privacy-policy')} />
-            <SettingsRow icon="📄" label="Terms of Service" onPress={() => router.push('/terms-of-service')} />
-            <SettingsRow icon="📊" label="Data Export" sub="Download your FinZee data" onPress={handleDataExport} />
+            <SettingsRow iconName="shield-outline" label="Privacy Policy" onPress={() => router.push('/privacy-policy')} />
+            <SettingsRow iconName="document-text-outline" label="Terms of Service" onPress={() => router.push('/terms-of-service')} />
+            <SettingsRow iconName="download-outline" label="Data Export" sub="Download your FinZee data" onPress={handleDataExport} />
           </View>
 
           <View style={styles.disclaimer}>
@@ -289,10 +292,10 @@ export default function ProfileScreen() {
 
           <SectionHeader title="Account" />
           <View style={styles.card}>
-            <SettingsRow icon="👤" label="Edit Profile" onPress={() => router.push('/edit-profile')} />
-            <SettingsRow icon="🔐" label="Change Password" onPress={() => router.push('/forgot-password')} />
-            <SettingsRow icon="🚪" label="Sign Out" onPress={handleSignOut} />
-            <SettingsRow icon="🗑" label="Delete Account" sub="Permanently delete all your data" onPress={handleDeleteAccount} danger />
+            <SettingsRow iconName="person-outline" label="Edit Profile" onPress={() => router.push('/edit-profile')} />
+            <SettingsRow iconName="key-outline" label="Change Password" onPress={() => router.push('/forgot-password')} />
+            <SettingsRow iconName="log-out-outline" label="Sign Out" onPress={handleSignOut} />
+            <SettingsRow iconName="trash-outline" label="Delete Account" sub="Permanently delete all your data" onPress={handleDeleteAccount} danger />
           </View>
 
           <View style={styles.versionWrap}>
@@ -318,7 +321,7 @@ const styles = StyleSheet.create({
   avatarText:    { fontSize: 20, fontWeight: '800', color: '#fff' },
   heroName:      { fontSize: 18, fontWeight: '800', color: '#fff', letterSpacing: -0.5 },
   heroEmail:     { fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 1 },
-  memberBadge:   { backgroundColor: 'rgba(26,86,219,0.3)', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start', marginTop: 5, borderWidth: 1, borderColor: 'rgba(96,165,250,0.3)' },
+  memberBadge:   { backgroundColor: 'rgba(26,86,219,0.3)', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start', marginTop: 5, borderWidth: 1, borderColor: 'rgba(96,165,250,0.3)', flexDirection: 'row', alignItems: 'center', gap: 4 },
   memberBadgeText: { fontSize: 10, fontWeight: '700', color: '#93c5fd' },
   scoreRow:      { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: Radius.md, padding: 14, gap: 8 },
   scoreItem:     { flex: 1, alignItems: 'center' },
@@ -329,7 +332,7 @@ const styles = StyleSheet.create({
   card:          { backgroundColor: Colors.surface, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border2, overflow: 'hidden', marginBottom: 4, ...Shadow.sm },
   row:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 15, borderBottomWidth: 1, borderBottomColor: Colors.bg2 },
   rowLeft:       { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  rowIcon:       { fontSize: 18, width: 26, textAlign: 'center' },
+  rowIconWrap:   { width: 26, height: 26, borderRadius: 8, backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center' },
   rowLabel:      { fontSize: 14, fontWeight: '600', color: Colors.ink },
   rowSub:        { fontSize: 11, color: Colors.mute, marginTop: 1 },
   rowArrow:      { fontSize: 22, color: Colors.mute3 },

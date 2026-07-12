@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, StatusBar, Animated, Alert, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors, Shadow, Radius } from '../../constants/theme';
 import FinZeeLogo from '../../components/FinZeeLogo';
 import { useAuth } from '../../hooks/useAuth';
@@ -53,13 +54,13 @@ function PauseCard({ item, onBuy, onSkip }: { item: PauseListItem; onBuy: (id: s
       <View style={styles.countdownWrap}>
         <View style={styles.countdownBar}><View style={[styles.countdownFill, { width: `${pctThrough * 100}%`, backgroundColor: expired ? Colors.green : Colors.amber }]} /></View>
         <View style={styles.countdownRow}>
-          <Text style={[styles.countdownText, { color: timerColor }]}>⏱ {expired ? '24hrs complete — ready to decide' : remaining}</Text>
-          <Text style={styles.savedText}>{expired ? '✓ Paused' : `${Math.round(pctThrough * 100)}% through`}</Text>
+          <Text style={[styles.countdownText, { color: timerColor }]}><Ionicons name="time-outline" size={12} color={timerColor} /> {expired ? '24hrs complete — ready to decide' : remaining}</Text>
+          <Text style={styles.savedText}>{expired ? 'Paused' : `${Math.round(pctThrough * 100)}% through`}</Text>
         </View>
       </View>
-      {expired && <View style={styles.nudgeBanner}><Text style={styles.nudgeIcon}>🧠</Text><Text style={styles.nudgeMsg}>24 hours have passed. Do you still want this? Many impulse purchases feel less urgent after a pause.</Text></View>}
+      {expired && <View style={styles.nudgeBanner}><Ionicons name="bulb-outline" size={16} color="#065f46" /><Text style={styles.nudgeMsg}>24 hours have passed. Do you still want this? Many impulse purchases feel less urgent after a pause.</Text></View>}
       <View style={styles.actionsRow}>
-        <TouchableOpacity style={[styles.actionBtn, styles.skipBtn]} onPress={() => { press(); onSkip(item.id); }}><Text style={styles.skipBtnText}>Skip It ✕</Text></TouchableOpacity>
+        <TouchableOpacity style={[styles.actionBtn, styles.skipBtn]} onPress={() => { press(); onSkip(item.id); }}><Text style={styles.skipBtnText}>Skip It</Text></TouchableOpacity>
         <TouchableOpacity style={[styles.actionBtn, styles.buyBtn]} onPress={() => { press(); onBuy(item.id); }}><Text style={styles.buyBtnText}>Buy It →</Text></TouchableOpacity>
       </View>
     </Animated.View>
@@ -92,7 +93,7 @@ export default function PauseScreen() {
   async function updateStatus(id: string, status: 'bought' | 'skipped') {
     setItems(prev => prev.filter(i => i.id !== id));
     if (!CONFIG.DEV_MODE && user) await supabase.from('pause_list_items').update({ status }).eq('id', id);
-    Alert.alert(status === 'skipped' ? 'Skipped!' : 'Purchased!', status === 'skipped' ? '💪 Smart move! That money stays in your pocket.' : '🛍 Purchase logged. FinZee will track this spending.');
+    Alert.alert(status === 'skipped' ? 'Skipped!' : 'Purchased!', status === 'skipped' ? 'Smart move! That money stays in your pocket.' : 'Purchase logged. FinZee will track this spending.');
   }
 
   return (
@@ -105,7 +106,7 @@ export default function PauseScreen() {
       >
         <LinearGradient colors={['#064e3b', '#065f46', '#059669']} style={styles.hero}>
           <View style={styles.heroBar}>
-            <View><Text style={styles.heroEye}>FinZee AI™</Text><Text style={styles.heroTitle}>Pause List ⏸</Text><Text style={styles.heroSub}>Think before you spend</Text></View>
+            <View><Text style={styles.heroEye}>FinZee AI™</Text><Text style={styles.heroTitle}>Pause List</Text><Text style={styles.heroSub}>Think before you spend</Text></View>
             <FinZeeLogo variant="light" width={90} />
           </View>
           <View style={styles.statsRow}>
@@ -122,14 +123,14 @@ export default function PauseScreen() {
           </View>
 
           {items.length === 0
-            ? <View style={styles.emptyState}><Text style={styles.emptyEmoji}>🎉</Text><Text style={styles.emptyTitle}>Nothing paused</Text><Text style={styles.emptySub}>When you're unsure about a purchase, add it here for a 24-hour reflection period.</Text></View>
+            ? <View style={styles.emptyState}><Ionicons name="trophy-outline" size={48} color={Colors.blue} /><Text style={styles.emptyTitle}>Nothing paused</Text><Text style={styles.emptySub}>When you're unsure about a purchase, add it here for a 24-hour reflection period.</Text></View>
             : items.map(item => <PauseCard key={item.id} item={item} onBuy={id => updateStatus(id, 'bought')} onSkip={id => updateStatus(id, 'skipped')} />)
           }
 
           <TouchableOpacity style={styles.addWrap} onPress={() => router.push('/purchase-check')}>
             <LinearGradient colors={['#059669', '#0d9488']} style={styles.addBtn}><Text style={styles.addBtnText}>+ Add Item to Pause List</Text></LinearGradient>
           </TouchableOpacity>
-          <View style={styles.aiNote}><Text style={styles.aiNoteEmoji}>🧠</Text><Text style={styles.aiNoteText}>Research shows a 24-hour pause reduces impulse purchases by up to 70%. FinZee is helping you build that habit.</Text></View>
+          <View style={styles.aiNote}><Ionicons name="sparkles-outline" size={16} color="#5b21b6" /><Text style={styles.aiNoteText}>Research shows a 24-hour pause reduces impulse purchases by up to 70%. FinZee is helping you build that habit.</Text></View>
           <View style={{ height: 32 }} />
         </View>
       </ScrollView>

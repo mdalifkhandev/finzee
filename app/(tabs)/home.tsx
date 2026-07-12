@@ -5,6 +5,7 @@ import {
   RefreshControl, Animated, StatusBar, Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import Svg, { Circle, Text as SvgText, Defs, LinearGradient as SvgGrad, Stop } from 'react-native-svg';
 import { Colors, Shadow, Radius, Gradients } from '../../constants/theme';
@@ -157,7 +158,10 @@ export default function HomeScreen() {
         <LinearGradient colors={['#06080f', '#0f172a', '#1a2444']} style={styles.hero}>
           <View style={styles.heroTop}>
             <View>
-              <Text style={styles.greeting}>{greeting} 👋</Text>
+              <View style={styles.greetingRow}>
+                <Text style={styles.greeting}>{greeting}</Text>
+                <Ionicons name="sunny-outline" size={14} color="rgba(255,255,255,0.55)" />
+              </View>
               <Text style={styles.name}>{firstName}</Text>
             </View>
             <TouchableOpacity onPress={() => router.push('/(tabs)/profile')}>
@@ -183,7 +187,7 @@ export default function HomeScreen() {
         </LinearGradient>
 
         <View style={[styles.card, { marginTop: 14 }]}>
-          <View style={styles.insightChip}><Text style={styles.insightChipText}>❖  Today's Insight</Text></View>
+          <View style={styles.insightChip}><Ionicons name="sparkles-outline" size={10} color="#5b21b6" /><Text style={styles.insightChipText}>Today's Insight</Text></View>
           <Text style={styles.insightTitle}>{insightTitle}</Text>
           <Text style={styles.insightBody}>{insightBody}</Text>
           <TouchableOpacity style={styles.insightCta} onPress={() => router.push('/purchase-check')}>
@@ -193,12 +197,12 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.statsRow}>
-          {[{ icon: '📈', label: 'Saved', value: `$${Math.round(stats.saved).toLocaleString()}`, bg: Colors.blueTint },
-            { icon: '🎯', label: 'Goals', value: `${stats.goals} Active`, bg: Colors.greenTint },
-            { icon: '⏸️', label: 'Paused', value: `${stats.paused} Items`, bg: Colors.purpleTint }]
+          {[{ icon: 'trending-up-outline', label: 'Saved', value: `$${Math.round(stats.saved).toLocaleString()}`, bg: Colors.blueTint, color: Colors.blue },
+            { icon: 'trophy-outline', label: 'Goals', value: `${stats.goals} Active`, bg: Colors.greenTint, color: Colors.green },
+            { icon: 'pause-circle-outline', label: 'Paused', value: `${stats.paused} Items`, bg: Colors.purpleTint, color: Colors.purple }]
             .map(s => (
               <View key={s.label} style={[styles.statCard, Shadow.sm]}>
-                <View style={[styles.statIcon, { backgroundColor: s.bg }]}><Text style={styles.statEmoji}>{s.icon}</Text></View>
+                <View style={[styles.statIcon, { backgroundColor: s.bg }]}><Ionicons name={s.icon as any} size={16} color={s.color} /></View>
                 <Text style={styles.statLabel}>{s.label}</Text>
                 <Text style={styles.statValue}>{s.value}</Text>
               </View>
@@ -252,24 +256,24 @@ export default function HomeScreen() {
         <Text style={styles.sectionTitle}>More Features</Text>
         <View style={styles.actionsGrid}>
           {[
-            { label: 'Should I\nBuy This?', emoji: '🛒', color: Colors.blueTint, textColor: Colors.blue, route: '/purchase-check' },
-            { label: 'Pause\nPurchase', emoji: '⏸️', color: Colors.greenTint, textColor: Colors.green, route: '/(tabs)/pause' },
-            { label: 'Ask\nFinZee AI', emoji: '💬', color: Colors.purpleTint, textColor: Colors.purple, route: '/(tabs)/coach' },
-            { label: 'My\nGoals', emoji: '🎯', color: Colors.amberTint, textColor: Colors.amber, route: '/(tabs)/goals' },
-            { label: 'Health', emoji: '💪', color: '#e0f2fe', textColor: '#0284c7', route: '/(tabs)/health' },
-            { label: 'Transactions', emoji: '💳', color: '#f3e8ff', textColor: '#7c3aed', route: '/(tabs)/transactions' },
-            { label: 'Budget', emoji: '📊', color: '#dcfce7', textColor: '#16a34a', route: '/(tabs)/budgets' },
-            { label: 'Weekly\nWins', emoji: '🏆', color: '#fef3c7', textColor: '#d97706', route: '/weekly-wins' },
+            { label: 'Should I\nBuy This?', icon: 'cart-outline', color: Colors.blueTint, textColor: Colors.blue, route: '/purchase-check' },
+            { label: 'Pause\nPurchase', icon: 'pause-circle-outline', color: Colors.greenTint, textColor: Colors.green, route: '/(tabs)/pause' },
+            { label: 'Ask\nFinZee AI', icon: 'chatbubble-ellipses-outline', color: Colors.purpleTint, textColor: Colors.purple, route: '/(tabs)/coach' },
+            { label: 'My\nGoals', icon: 'trophy-outline', color: Colors.amberTint, textColor: Colors.amber, route: '/(tabs)/goals' },
+            { label: 'Health', icon: 'fitness-outline', color: '#e0f2fe', textColor: '#0284c7', route: '/(tabs)/health' },
+            { label: 'Transactions', icon: 'swap-horizontal-outline', color: '#f3e8ff', textColor: '#7c3aed', route: '/(tabs)/transactions' },
+            { label: 'Budget', icon: 'pie-chart-outline', color: '#dcfce7', textColor: '#16a34a', route: '/(tabs)/budgets' },
+            { label: 'Weekly\nWins', icon: 'podium-outline', color: '#fef3c7', textColor: '#d97706', route: '/weekly-wins' },
           ].map(a => (
             <TouchableOpacity key={a.label} style={[styles.actionCard, { backgroundColor: a.color }, Shadow.sm]} onPress={() => router.push(a.route as any)}>
-              <Text style={styles.actionEmoji}>{a.emoji}</Text>
+              <View style={styles.actionIcon}><Ionicons name={a.icon as any} size={22} color={a.textColor} /></View>
               <Text style={[styles.actionLabel, { color: a.textColor }]}>{a.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
         <TouchableOpacity style={[styles.askCard, Shadow.md]} onPress={() => router.push('/(tabs)/coach')}>
-          <LinearGradient colors={Gradients.blue} style={styles.askIcon}><Text style={{ fontSize: 20 }}>💬</Text></LinearGradient>
+          <LinearGradient colors={Gradients.blue} style={styles.askIcon}><Ionicons name="chatbubble-ellipses-outline" size={20} color="#fff" /></LinearGradient>
           <View style={styles.askText}>
             <Text style={styles.askTitle}>Ask FinZee anything</Text>
             <Text style={styles.askSub}>"Am I on track for my goals?"</Text>
@@ -289,6 +293,7 @@ const styles = StyleSheet.create({
   scrollContent:{ paddingBottom: TAB_BAR_SPACING },
   hero:         { paddingTop: Platform.OS === 'ios' ? 56 : 36, paddingBottom: 24, paddingHorizontal: 20 },
   heroTop:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 },
+  greetingRow:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
   greeting:     { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.55)' },
   name:         { fontSize: 24, fontWeight: '800', color: '#fff', letterSpacing: -1, marginTop: 2 },
   scoreCard:    { flexDirection: 'row', alignItems: 'center', gap: 18, marginBottom: 16, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: Radius.lg, padding: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
@@ -315,7 +320,6 @@ const styles = StyleSheet.create({
   statsRow:     { flexDirection: 'row', gap: 8, marginHorizontal: 16, marginTop: 14 },
   statCard:     { flex: 1, backgroundColor: Colors.surface, borderRadius: Radius.md, padding: 13, borderWidth: 1, borderColor: Colors.border2 },
   statIcon:     { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  statEmoji:    { fontSize: 15 },
   statLabel:    { fontSize: 9, fontWeight: '700', color: Colors.mute2, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 2 },
   statValue:    { fontSize: 13, fontWeight: '800', color: Colors.ink, letterSpacing: -0.3 },
   weeklyWinsCard: {
@@ -375,7 +379,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 14, fontWeight: '800', color: Colors.ink, marginHorizontal: 16, marginTop: 20, marginBottom: 10, letterSpacing: -0.3 },
   actionsGrid:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginHorizontal: 16 },
   actionCard:   { width: '47.5%', borderRadius: Radius.md, padding: 14 },
-  actionEmoji:  { fontSize: 24, marginBottom: 8 },
+  actionIcon:   { width: 28, height: 28, alignItems: 'flex-start', justifyContent: 'center', marginBottom: 8 },
   actionLabel:  { fontSize: 11, fontWeight: '800', lineHeight: 15 },
   askCard:      { flexDirection: 'row', alignItems: 'center', gap: 14, marginHorizontal: 16, marginTop: 14, backgroundColor: Colors.surface, borderRadius: Radius.lg, padding: 16, borderWidth: 1, borderColor: Colors.border2 },
   askIcon:      { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },

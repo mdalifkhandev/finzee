@@ -5,6 +5,7 @@ import {
   Platform, StatusBar, ActivityIndicator, Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Colors, Shadow, Radius, Gradients } from '../constants/theme';
 import FinZeeLogo from '../components/FinZeeLogo';
@@ -13,17 +14,17 @@ import { supabase } from '../services/supabaseClient';
 import { CONFIG } from '../constants/config';
 
 const SECURITY_POINTS = [
-  { icon: '🔒', text: 'FinZee never sees your bank username or password' },
-  { icon: '🏦', text: 'Bank-level 256-bit encryption via Plaid' },
-  { icon: '👁', text: 'Read-only access — we cannot move your money' },
-  { icon: '🔌', text: 'Disconnect anytime from your profile settings' },
-  { icon: '🇺🇸', text: 'Plaid is used by Venmo, Coinbase, and 7,000+ apps' },
+  { icon: 'lock-closed-outline', text: 'FinZee never sees your bank username or password' },
+  { icon: 'shield-checkmark-outline', text: 'Bank-level 256-bit encryption via Plaid' },
+  { icon: 'eye-outline', text: 'Read-only access — we cannot move your money' },
+  { icon: 'unlink-outline', text: 'Disconnect anytime from your profile settings' },
+  { icon: 'flag-outline', text: 'Plaid is used by Venmo, Coinbase, and 7,000+ apps' },
 ];
 
 const SUPPORTED_BANKS = [
-  { name: 'Chase', icon: '🏦' }, { name: 'Bank of America', icon: '🏑' },
-  { name: 'Wells Fargo', icon: '🏇' }, { name: 'Citi', icon: '🌐' },
-  { name: 'US Bank', icon: '⭐' }, { name: '+ 10,000 more', icon: '❖' },
+  { name: 'Chase', icon: 'business-outline' }, { name: 'Bank of America', icon: 'card-outline' },
+  { name: 'Wells Fargo', icon: 'cash-outline' }, { name: 'Citi', icon: 'globe-outline' },
+  { name: 'US Bank', icon: 'star-outline' }, { name: '+ 10,000 more', icon: 'grid-outline' },
 ];
 
 export default function ConnectBankScreen() {
@@ -48,16 +49,16 @@ export default function ConnectBankScreen() {
       <View style={styles.root}>
         <StatusBar barStyle="light-content" />
         <LinearGradient colors={['#064e3b', '#059669']} style={styles.successHero}>
-          <TouchableOpacity style={styles.back} onPress={() => router.back()}><Text style={styles.backText}>← Back</Text></TouchableOpacity>
-          <Text style={styles.successEmoji}>🎉</Text>
+          <TouchableOpacity style={styles.back} onPress={() => router.back()}><Ionicons name="arrow-back" size={16} color="rgba(255,255,255,0.85)" /><Text style={styles.backText}>Back</Text></TouchableOpacity>
+          <Ionicons name="checkmark-circle-outline" size={54} color="#fff" />
           <Text style={styles.successTitle}>Bank Connected!</Text>
           <Text style={styles.successSub}>FinZee AI can now analyze your transactions and provide personalized financial insights.</Text>
         </LinearGradient>
         <View style={styles.sheet}>
           <View style={styles.connectedCard}>
-            <Text style={{ fontSize: 24 }}>🏦</Text>
+            <Ionicons name="business-outline" size={24} color="#fff" />
             <View style={{ flex: 1 }}><Text style={styles.connectedName}>Bank Account</Text><Text style={styles.connectedSub}>Connected securely via Plaid</Text></View>
-            <View style={styles.connectedBadge}><Text style={styles.connectedBadgeText}>✓ Live</Text></View>
+            <View style={styles.connectedBadge}><Ionicons name="checkmark-circle-outline" size={12} color="#065f46" /><Text style={styles.connectedBadgeText}>Live</Text></View>
           </View>
           <TouchableOpacity style={styles.ctaWrap} onPress={() => router.replace('/(tabs)/home')}>
             <LinearGradient colors={Gradients.blue} style={styles.cta}><Text style={styles.ctaText}>Go to Dashboard →</Text></LinearGradient>
@@ -71,7 +72,7 @@ export default function ConnectBankScreen() {
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
       <LinearGradient colors={['#06080f', '#0f172a', '#1a2444']} style={styles.hero}>
-        <TouchableOpacity style={styles.back} onPress={() => router.back()}><Text style={styles.backText}>← Back</Text></TouchableOpacity>
+        <TouchableOpacity style={styles.back} onPress={() => router.back()}><Ionicons name="arrow-back" size={16} color="rgba(255,255,255,0.85)" /><Text style={styles.backText}>Back</Text></TouchableOpacity>
         <FinZeeLogo variant="light" width={140} />
         <Text style={styles.heroTitle}>Connect your <Text style={styles.heroBlue}>bank account.</Text></Text>
         <Text style={styles.heroSub}>FinZee uses Plaid — the same secure connection used by Venmo, Robinhood, and 7,000+ apps.</Text>
@@ -80,7 +81,7 @@ export default function ConnectBankScreen() {
         <Text style={styles.sectionLabel}>Bank-level security</Text>
         {SECURITY_POINTS.map((p, i) => (
           <View key={i} style={styles.securityRow}>
-            <Text style={styles.securityIcon}>{p.icon}</Text>
+            <View style={styles.securityIcon}><Ionicons name={p.icon as any} size={16} color={Colors.blue} /></View>
             <Text style={styles.securityText}>{p.text}</Text>
           </View>
         ))}
@@ -88,7 +89,7 @@ export default function ConnectBankScreen() {
         <View style={styles.banksGrid}>
           {SUPPORTED_BANKS.map(b => (
             <View key={b.name} style={styles.bankChip}>
-              <Text style={styles.bankIcon}>{b.icon}</Text>
+              <View style={styles.bankIcon}><Ionicons name={b.icon as any} size={20} color={Colors.blue} /></View>
               <Text style={styles.bankName}>{b.name}</Text>
             </View>
           ))}
