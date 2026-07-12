@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   KeyboardAvoidingView, Platform, ScrollView, Switch,
-  StatusBar, ActivityIndicator, Alert,
+  StatusBar, ActivityIndicator, Alert, RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -23,6 +23,7 @@ export default function SignUpScreen() {
   const [consentHealth, setConsentHealth]       = useState(false);
   const [consentAI, setConsentAI]               = useState(false);
   const [consentTerms, setConsentTerms]         = useState(false);
+  const [refreshing, setRefreshing]             = useState(false);
 
   async function handleSignUp() {
     if (!name.trim() || !email.trim() || !password.trim()) {
@@ -79,10 +80,31 @@ export default function SignUpScreen() {
     }
   }
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      setName('');
+      setEmail('');
+      setPassword('');
+      setShowPass(false);
+      setConsentFinancial(false);
+      setConsentHealth(false);
+      setConsentAI(false);
+      setConsentTerms(false);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <StatusBar barStyle="light-content" />
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.blue} />}
+      >
         <LinearGradient colors={['#06080f', '#0f172a', '#1a2444']} style={styles.hero}>
           <View style={styles.glow} />
           <Text style={styles.eyebrow}>FinZee AI™</Text>

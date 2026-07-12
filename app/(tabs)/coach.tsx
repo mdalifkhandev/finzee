@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity,
-  KeyboardAvoidingView, Platform, Animated, StatusBar,
+  KeyboardAvoidingView, Platform, Animated, StatusBar, RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -37,39 +37,48 @@ export default function CoachScreen() {
   const [input, setInput]     = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [typing, setTyping]   = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const dotAnim = useRef(new Animated.Value(0)).current;
   const firstName = user?.displayName?.split(' ')[0] || 'there';
 
-  useEffect(() => {
-    let mounted = true;
+  const loadWelcome = async (mountedRef: { current: boolean }) => {
+    if (!user) return;
 
-    async function loadWelcome() {
-      if (!user) return;
+    try {
+      const data = await callFunction<{ text: string }>('ai-welcome', {
+        method: 'POST',
+      });
 
-      try {
-        const data = await callFunction<{ text: string }>('ai-welcome', {
-          method: 'POST',
-        });
-
-        if (!mounted) return;
-        setMessages([{ id: '0', role: 'ai', text: data.text, ts: new Date() }]);
-      } catch {
-        if (!mounted) return;
-        setMessages([{
-          id: '0',
-          role: 'ai',
-          text: `Hi ${firstName}! I'm ready to help with your money questions. Ask me anything about spending, goals, or the next best move.`,
-          ts: new Date(),
-        }]);
-      }
+      if (!mountedRef.current) return;
+      setMessages([{ id: '0', role: 'ai', text: data.text, ts: new Date() }]);
+    } catch {
+      if (!mountedRef.current) return;
+      setMessages([{
+        id: '0',
+        role: 'ai',
+        text: `Hi ${firstName}! I'm ready to help with your money questions. Ask me anything about spending, goals, or the next best move.`,
+        ts: new Date(),
+      }]);
     }
+  };
 
-    loadWelcome();
-
+  useEffect(() => {
+    const mountedRef = { current: true };
+    void loadWelcome(mountedRef);
     return () => {
-      mounted = false;
+      mountedRef.current = false;
     };
   }, [firstName]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const mountedRef = { current: true };
+      await loadWelcome(mountedRef);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     if (typing) {
@@ -148,6 +157,7 @@ export default function CoachScreen() {
         contentContainerStyle={styles.messagesContent}
         showsVerticalScrollIndicator={false}
         onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.blue} />}
       >
         {messages.map(msg => (
           <View key={msg.id} style={[styles.msgRow, msg.role === 'user' ? styles.msgRowUser : styles.msgRowAi]}>

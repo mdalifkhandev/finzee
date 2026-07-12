@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Modal, TextInput, Alert, ActivityIndicator, Platform, StatusBar,
+  Modal, TextInput, Alert, ActivityIndicator, Platform, StatusBar, RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Shadow, Radius, Gradients } from '../../constants/theme';
@@ -141,6 +141,7 @@ export default function GoalsScreen() {
   const { user } = useAuth();
   const [goals, setGoals]         = useState<Goal[]>([]);
   const [loading, setLoading]     = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [celebrated, setCelebrated] = useState<Goal | null>(null);
   const [showAdd, setShowAdd]     = useState(false);
 
@@ -153,6 +154,15 @@ export default function GoalsScreen() {
       if (error) throw error;
       setGoals((data ?? []).map((row: GoalRow) => mapGoalRow(row)));
     } catch (e) { console.warn('[Goals] load error:', e); setGoals([]); } finally { setLoading(false); }
+  }
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await loadGoals();
+    } finally {
+      setRefreshing(false);
+    }
   }
 
   async function addGoal(g: Omit<Goal,'id'|'user_id'|'created_at'>) {
@@ -185,6 +195,7 @@ export default function GoalsScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.blue} />}
       >
         <LinearGradient colors={['#06080f', '#0f172a', '#1a2444']} style={styles.hero}>
           <View style={styles.heroBar}>

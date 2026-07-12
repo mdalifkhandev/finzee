@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   KeyboardAvoidingView, Platform, ScrollView,
-  StatusBar, ActivityIndicator, Alert,
+  StatusBar, ActivityIndicator, Alert, RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -17,6 +17,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading]   = useState(false);
   const [showPass, setShowPass] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   async function handleLogin() {
     if (!email.trim() || !password.trim()) {
@@ -36,10 +37,26 @@ export default function LoginScreen() {
     }
   }
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      setEmail('');
+      setPassword('');
+      setShowPass(false);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <StatusBar barStyle="light-content" />
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.blue} />}
+      >
         <LinearGradient colors={['#06080f', '#0f172a', '#1a2444']} style={styles.hero}>
           <View style={styles.glow} />
           <View style={styles.heroContent}>

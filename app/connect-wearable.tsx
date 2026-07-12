@@ -1,6 +1,6 @@
 // FinZee AI™ — Connect Wearable Screen
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, StatusBar, Alert, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, StatusBar, Alert, ActivityIndicator, Linking, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Colors, Shadow, Radius, Gradients } from '../constants/theme';
@@ -52,6 +52,7 @@ export default function ConnectWearableScreen() {
   const [connected, setConnected] = useState<Record<string, boolean>>({});
   const [loading, setLoading]     = useState<Record<string, boolean>>({});
   const [testData, setTestData]   = useState<any>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => { loadConnected(); }, []);
 
@@ -113,10 +114,23 @@ export default function ConnectWearableScreen() {
 
   const connectedCount = Object.values(connected).filter(Boolean).length;
 
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await loadConnected();
+      setTestData(null);
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.blue} />}
+      >
         <LinearGradient colors={['#0f172a', '#1e1b4b', '#4c1d95']} style={styles.hero}>
           <TouchableOpacity style={styles.back} onPress={() => router.back()}><Text style={styles.backText}>← Back</Text></TouchableOpacity>
           <FinZeeLogo variant="light" width={130} />

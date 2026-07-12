@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  KeyboardAvoidingView, Platform, StatusBar, ActivityIndicator, Alert,
+  KeyboardAvoidingView, Platform, StatusBar, ActivityIndicator, Alert, RefreshControl, ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -15,6 +15,7 @@ export default function ForgotPasswordScreen() {
   const [email, setEmail]     = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent]       = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   async function handleReset() {
     if (!email.trim()) { Alert.alert('Missing email', 'Please enter your email address.'); return; }
@@ -34,6 +35,17 @@ export default function ForgotPasswordScreen() {
     }
   }
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      setEmail('');
+      setLoading(false);
+      setSent(false);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <StatusBar barStyle="light-content" />
@@ -47,6 +59,11 @@ export default function ForgotPasswordScreen() {
       </LinearGradient>
 
       <View style={styles.sheet}>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.blue} />}
+        >
         {!sent ? (
           <>
             <Text style={styles.label}>Email Address</Text>
@@ -73,6 +90,7 @@ export default function ForgotPasswordScreen() {
         <TouchableOpacity style={styles.signInLink} onPress={() => router.replace('/login')}>
           <Text style={styles.signInText}>Remember your password? <Text style={{ color: Colors.blue, fontWeight: '700' }}>Sign in</Text></Text>
         </TouchableOpacity>
+        </ScrollView>
       </View>
     </KeyboardAvoidingView>
   );

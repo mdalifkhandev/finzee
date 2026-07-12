@@ -1,6 +1,6 @@
 // FinZee AI™ — Health & Biometrics Screen
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, StatusBar, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Defs, LinearGradient as SvgGrad, Stop } from 'react-native-svg';
 import { router } from 'expo-router';
@@ -59,6 +59,7 @@ export default function HealthScreen() {
   const { user } = useAuth();
   const [metrics, setMetrics]   = useState<HealthDailyMetric | null>(null);
   const [permitted, setPermitted] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const wellnessScore = metrics
     ? Math.round((Math.min(metrics.sleepHours / 8, 1) * 30) + (Math.min(metrics.steps / 10000, 1) * 25) + (metrics.stressIndicator === 'low' ? 25 : metrics.stressIndicator === 'moderate' ? 15 : 5) + 20)
@@ -75,6 +76,20 @@ export default function HealthScreen() {
     })();
   }, [user]);
 
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      const perm = await requestHealthPermissions();
+      setPermitted(perm);
+      if (user) {
+        const m = await getDailyMetrics(user.id, new Date().toISOString().split('T')[0]);
+        setMetrics(m);
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   const stressLabel = metrics?.stressIndicator === 'high' ? 'High' : metrics?.stressIndicator === 'moderate' ? 'Moderate' : 'Low';
   const stressColor = metrics?.stressIndicator === 'high' ? Colors.red : metrics?.stressIndicator === 'moderate' ? Colors.amber : Colors.green;
 
@@ -84,6 +99,7 @@ export default function HealthScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.blue} />}
       >
         <LinearGradient colors={['#0f172a', '#1e1b4b', '#4c1d95']} style={styles.hero}>
           <View style={styles.heroBar}>

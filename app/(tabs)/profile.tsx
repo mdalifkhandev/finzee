@@ -1,6 +1,6 @@
 // FinZee AI™ — Profile & Settings Screen
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, Platform, StatusBar, Share } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, Platform, StatusBar, Share, RefreshControl, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Colors, Shadow, Radius, Gradients } from '../../constants/theme';
@@ -42,13 +42,15 @@ export default function ProfileScreen() {
   const [wellnessScore, setWellnessScore]       = useState(0);
   const [goalsActive, setGoalsActive]           = useState(0);
   const [daysStreak, setDaysStreak]             = useState(0);
+  const [refreshing, setRefreshing]             = useState(false);
+  const [profileName, setProfileName]           = useState('FinZee User');
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
+  const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
 
-  const firstName = user?.displayName?.split(' ')[0] || 'User';
-  const initials  = user?.displayName?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+  const initials  = profileName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || user?.email?.[0]?.toUpperCase() || '?';
 
-  useEffect(() => {
+  const loadProfileData = useCallback(async (mountedRef?: { current: boolean }) => {
     let mounted = true;
-
     async function loadConsentState() {
       if (!user || CONFIG.DEV_MODE) return;
       try {
@@ -65,7 +67,7 @@ export default function ProfileScreen() {
           return;
         }
 
-        if (data && mounted) {
+        if (data && (mountedRef?.current ?? mounted)) {
           if (typeof data.financial_data === 'boolean') setConsentFinancial(data.financial_data);
           if (typeof data.health_data === 'boolean') setConsentHealth(data.health_data);
           if (typeof data.ai_personalization === 'boolean') setConsentAI(data.ai_personalization);
@@ -99,7 +101,7 @@ export default function ProfileScreen() {
           - Math.min(totalPaused * 2, 10)
         )));
 
-        if (mounted) {
+        if (mountedRef?.current ?? mounted) {
           setGoalsActive(goalCount);
           setDaysStreak(currentStreak);
           setWellnessScore(liveScore);
@@ -109,10 +111,44 @@ export default function ProfileScreen() {
       }
     }
 
+    async function loadProfileDetails() {
+      if (!user || CONFIG.DEV_MODE) return;
+      try {
+        const response = await callFunction<any>('user-profile', { method: 'GET' });
+        const profile = response?.profile ?? null;
+        const first = profile?.first_name?.trim?.() || '';
+        const last = profile?.last_name?.trim?.() || '';
+        const fullName = [first, last].filter(Boolean).join(' ') || user.displayName || user.email?.split('@')[0] || 'FinZee User';
+        if (mounted) {
+          setProfileName(fullName);
+          setProfileAvatarUrl(profile?.avatar_url ?? null);
+          setAvatarLoadFailed(false);
+        }
+      } catch (error) {
+        console.warn('[Profile] profile details load exception:', error);
+      }
+    }
+
     void loadConsentState();
     void loadLiveStats();
+    void loadProfileDetails();
     return () => { mounted = false; };
   }, [user]);
+
+  useEffect(() => {
+    let mountedRef = { current: true };
+    void loadProfileData(mountedRef);
+    return () => { mountedRef.current = false; };
+  }, [loadProfileData]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await loadProfileData({ current: true });
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadProfileData]);
 
   async function updateConsent(key: 'financial_data' | 'health_data' | 'ai_personalization' | 'push_reminders', value: boolean) {
     if (!user || CONFIG.DEV_MODE) return;
@@ -185,17 +221,26 @@ export default function ProfileScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.blue} />}
       >
         <LinearGradient colors={['#06080f', '#0f172a', '#1a2444']} style={styles.hero}>
           <View style={styles.heroBar}>
             <View style={styles.heroLeft}>
               <View style={styles.avatar}>
-                <LinearGradient colors={['#a855f7', '#ec4899']} style={styles.avatarGrad}>
-                  <Text style={styles.avatarText}>{initials}</Text>
-                </LinearGradient>
+                {profileAvatarUrl && !avatarLoadFailed ? (
+                  <Image
+                    source={{ uri: profileAvatarUrl }}
+                    style={styles.avatarImage}
+                    onError={() => setAvatarLoadFailed(true)}
+                  />
+                ) : (
+                  <LinearGradient colors={['#a855f7', '#ec4899']} style={styles.avatarGrad}>
+                    <Text style={styles.avatarText}>{initials}</Text>
+                  </LinearGradient>
+                )}
               </View>
               <View>
-                <Text style={styles.heroName}>{user?.displayName || 'FinZee User'}</Text>
+                <Text style={styles.heroName}>{profileName}</Text>
                 <Text style={styles.heroEmail}>{user?.email || 'user@finzee.ai'}</Text>
                 <View style={styles.memberBadge}><Text style={styles.memberBadgeText}>❖ FinZee Member</Text></View>
               </View>
@@ -244,7 +289,7 @@ export default function ProfileScreen() {
 
           <SectionHeader title="Account" />
           <View style={styles.card}>
-            <SettingsRow icon="👤" label="Edit Profile" onPress={() => {}} />
+            <SettingsRow icon="👤" label="Edit Profile" onPress={() => router.push('/edit-profile')} />
             <SettingsRow icon="🔐" label="Change Password" onPress={() => router.push('/forgot-password')} />
             <SettingsRow icon="🚪" label="Sign Out" onPress={handleSignOut} />
             <SettingsRow icon="🗑" label="Delete Account" sub="Permanently delete all your data" onPress={handleDeleteAccount} danger />
@@ -268,6 +313,7 @@ const styles = StyleSheet.create({
   heroBar:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
   heroLeft:      { flexDirection: 'row', alignItems: 'center', gap: 14 },
   avatar:        { width: 56, height: 56, borderRadius: 28 },
+  avatarImage:   { width: 56, height: 56, borderRadius: 28, resizeMode: 'cover' },
   avatarGrad:    { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.2)' },
   avatarText:    { fontSize: 20, fontWeight: '800', color: '#fff' },
   heroName:      { fontSize: 18, fontWeight: '800', color: '#fff', letterSpacing: -0.5 },

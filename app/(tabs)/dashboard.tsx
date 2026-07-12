@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +19,7 @@ const TAB_BAR_SPACING = Platform.OS === 'ios' ? 50 : 30;
 
 export default function Dashboard() {
   const [interventionVisible, setInterventionVisible] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const { stage, evaluation, evaluate, reset } = usePurchaseIntervention();
 
   const accounts = [
@@ -44,8 +46,21 @@ export default function Dashboard() {
     closeIntervention();
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      closeIntervention();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#00E5FF" />}
+    >
       <StatusBar style="light" />
 
       {/* Header */}
