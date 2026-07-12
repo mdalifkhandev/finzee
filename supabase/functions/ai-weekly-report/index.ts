@@ -18,14 +18,19 @@ Deno.serve(async (req) => {
     if ("response" in auth) return auth.response;
     const { supabase, user } = auth;
 
-    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
     const [txRes, goalsRes, pauseRes, profileRes] = await Promise.all([
-      supabase.from("transactions").select("amount, category, type, date").eq("user_id", user.id).gte("date", weekAgo),
+      supabase.from("transactions").select("amount, type, ts, categories, merchant").eq("user_id", user.id).gte("ts", weekAgo),
       supabase.from("goals").select("name, target_amount, current_amount").eq("user_id", user.id),
       supabase.from("pause_list_items").select("status, price, created_at").eq("user_id", user.id).gte("created_at", weekAgo),
       supabase.from("profiles").select("first_name").eq("user_id", user.id).maybeSingle(),
     ]);
+
+    if (txRes.error) throw txRes.error;
+    if (goalsRes.error) throw goalsRes.error;
+    if (pauseRes.error) throw pauseRes.error;
+    if (profileRes.error) throw profileRes.error;
 
     const tx = txRes.data ?? [];
     const spent = tx.filter((t) => t.type !== "income").reduce((s, t) => s + Math.abs(Number(t.amount)), 0);
@@ -34,7 +39,11 @@ Deno.serve(async (req) => {
     const byCat: Record<string, number> = {};
     for (const t of tx) {
       if (t.type === "income") continue;
-      const c = t.category ?? "Other";
+      const c = Array.isArray(t.categories) && t.categories.length > 0
+        ? String(t.categories[0])
+        : t.merchant
+          ? String(t.merchant)
+          : "Other";
       byCat[c] = (byCat[c] ?? 0) + Math.abs(Number(t.amount));
     }
     const topCategories = Object.entries(byCat).sort((a, b) => b[1] - a[1]).slice(0, 3);

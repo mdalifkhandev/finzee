@@ -16,6 +16,49 @@ export interface CallOptions {
   query?: Record<string, string | number | undefined>;
 }
 
+function extractReadableErrorMessage(payload: unknown, fallback: string): string {
+  const seen = new Set<unknown>();
+
+  const normalize = (value: unknown): string | null => {
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (!trimmed) return null;
+
+      const jsonStart = trimmed.indexOf('{');
+      const jsonCandidate = jsonStart >= 0 ? trimmed.slice(jsonStart) : trimmed;
+
+      try {
+        return normalize(JSON.parse(jsonCandidate));
+      } catch {
+        return trimmed;
+      }
+    }
+
+    if (!value || typeof value !== 'object' || seen.has(value)) return null;
+    seen.add(value);
+
+    const record = value as Record<string, any>;
+    const nestedCandidates = [
+      record?.error?.message,
+      record?.error?.error?.message,
+      record?.error,
+      record?.message,
+      record?.raw,
+      record?.detail,
+      record?.msg,
+    ];
+
+    for (const candidate of nestedCandidates) {
+      const result = normalize(candidate);
+      if (result) return result;
+    }
+
+    return null;
+  };
+
+  return normalize(payload) ?? fallback;
+}
+
 /**
  * Invoke an edge function by name. Returns the parsed JSON body.
  * Throws an Error with the function's message on non-2xx responses.
@@ -55,10 +98,9 @@ export async function callFunction<T = any>(name: string, opts: CallOptions = {}
     }
   }
   if (!res.ok) {
+    const fallback = `Request to ${name} failed (${res.status})`;
     throw new Error(
-      data?.error ||
-      data?.raw ||
-      `Request to ${name} failed (${res.status})`
+      extractReadableErrorMessage(data, extractReadableErrorMessage(text, fallback))
     );
   }
   return data as T;
