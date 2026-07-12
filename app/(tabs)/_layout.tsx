@@ -83,6 +83,15 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
+          name="budgets"
+          options={{
+            title: 'Budget',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="pie-chart-outline" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
           name="pause"
           options={{
             title: 'Pause',

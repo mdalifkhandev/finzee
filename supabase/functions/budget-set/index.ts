@@ -22,7 +22,10 @@ Deno.serve(async (req) => {
     }
     if (Number(amount) < 0) return jsonResponse({ error: "amount must be >= 0" }, 400);
 
-    // Upsert by (user_id, category): update if the category budget exists.
+    const now = new Date();
+    const monthStart = month ?? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10);
+
+    // Upsert by (user_id, category, month): update if the budget already exists.
     const { data: existing } = await supabase
       .from("budgets")
       .select("id")
@@ -30,9 +33,6 @@ Deno.serve(async (req) => {
       .eq("category", category)
       .eq("month", monthStart)
       .maybeSingle();
-
-    const now = new Date();
-    const monthStart = month ?? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10);
 
     const basePayload = {
       user_id: user.id,
