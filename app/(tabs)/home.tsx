@@ -249,13 +249,17 @@ export default function HomeScreen() {
           </LinearGradient>
         </TouchableOpacity>
 
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <Text style={styles.sectionTitle}>More Features</Text>
         <View style={styles.actionsGrid}>
           {[
             { label: 'Should I\nBuy This?', emoji: '🛒', color: Colors.blueTint, textColor: Colors.blue, route: '/purchase-check' },
             { label: 'Pause\nPurchase', emoji: '⏸️', color: Colors.greenTint, textColor: Colors.green, route: '/(tabs)/pause' },
             { label: 'Ask\nFinZee AI', emoji: '💬', color: Colors.purpleTint, textColor: Colors.purple, route: '/(tabs)/coach' },
             { label: 'My\nGoals', emoji: '🎯', color: Colors.amberTint, textColor: Colors.amber, route: '/(tabs)/goals' },
+            { label: 'Health', emoji: '💪', color: '#e0f2fe', textColor: '#0284c7', route: '/(tabs)/health' },
+            { label: 'Transactions', emoji: '💳', color: '#f3e8ff', textColor: '#7c3aed', route: '/(tabs)/transactions' },
+            { label: 'Budget', emoji: '📊', color: '#dcfce7', textColor: '#16a34a', route: '/(tabs)/budgets' },
+            { label: 'Weekly\nWins', emoji: '🏆', color: '#fef3c7', textColor: '#d97706', route: '/weekly-wins' },
           ].map(a => (
             <TouchableOpacity key={a.label} style={[styles.actionCard, { backgroundColor: a.color }, Shadow.sm]} onPress={() => router.push(a.route as any)}>
               <Text style={styles.actionEmoji}>{a.emoji}</Text>

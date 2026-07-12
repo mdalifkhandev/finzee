@@ -47,15 +47,6 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="health"
-          options={{
-            title: 'Health',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="fitness-outline" size={size} color={color} />
-            ),
-          }}
-        />
-        <Tabs.Screen
           name="coach"
           options={{
             title: 'Ask AI',
@@ -70,24 +61,6 @@ export default function TabLayout() {
             title: 'Goals',
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="trophy-outline" size={size} color={color} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="transactions"
-          options={{
-            title: 'Txns',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="swap-horizontal-outline" size={size} color={color} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="budgets"
-          options={{
-            title: 'Budget',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="pie-chart-outline" size={size} color={color} />
             ),
           }}
         />
@@ -109,15 +82,10 @@ export default function TabLayout() {
             ),
           }}
         />
-        <Tabs.Screen
-          name="dashboard"
-          options={{
-            title: 'Dashboard',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="grid-outline" size={size} color={color} />
-            ),
-          }}
-        />
+        <Tabs.Screen name="health" options={{ href: null }} />
+        <Tabs.Screen name="budgets" options={{ href: null }} />
+        <Tabs.Screen name="transactions" options={{ href: null }} />
+        <Tabs.Screen name="dashboard" options={{ href: null }} />
       </Tabs>
     </>
   );
