@@ -132,7 +132,16 @@ export default function SignUpScreen() {
             <View style={[styles.checkbox, consentTerms && { backgroundColor: Colors.blue, borderColor: Colors.blue }]}>
               {consentTerms && <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800' }}>✓</Text>}
             </View>
-            <Text style={styles.termsText}>I agree to the <Text style={styles.termsLink}>Terms of Service</Text> and <Text style={styles.termsLink}>Privacy Policy</Text></Text>
+            <Text style={styles.termsText}>
+              I agree to the{' '}
+              <Text style={styles.termsLink} onPress={() => router.push('/terms-of-service')}>
+                Terms of Service
+              </Text>{' '}
+              and{' '}
+              <Text style={styles.termsLink} onPress={() => router.push('/privacy-policy')}>
+                Privacy Policy
+              </Text>
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={[styles.ctaWrap, !consentTerms && { opacity: 0.6 }]} onPress={handleSignUp} disabled={loading || !consentTerms}>

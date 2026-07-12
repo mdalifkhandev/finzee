@@ -1,6 +1,6 @@
 // FinZee AI™ — Profile & Settings Screen
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, Platform, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, Platform, StatusBar, Share } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Colors, Shadow, Radius, Gradients } from '../../constants/theme';
@@ -161,6 +161,24 @@ export default function ProfileScreen() {
     ]);
   }
 
+  async function handleDataExport() {
+    if (!user) {
+      Alert.alert('Sign in required', 'Please sign in to export your data.');
+      return;
+    }
+
+    try {
+      const exportData = await callFunction<any>('user-export', { method: 'GET' });
+      await Share.share({
+        title: 'FinZee AI Data Export',
+        message: JSON.stringify(exportData, null, 2),
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to export data';
+      Alert.alert('Export failed', message);
+    }
+  }
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
@@ -208,9 +226,9 @@ export default function ProfileScreen() {
 
           <SectionHeader title="Privacy & Security" />
           <View style={styles.card}>
-            <SettingsRow icon="🔒" label="Privacy Policy" onPress={() => {}} />
-            <SettingsRow icon="📄" label="Terms of Service" onPress={() => {}} />
-            <SettingsRow icon="📊" label="Data Export" sub="Download your FinZee data" onPress={() => {}} />
+            <SettingsRow icon="🔒" label="Privacy Policy" onPress={() => router.push('/privacy-policy')} />
+            <SettingsRow icon="📄" label="Terms of Service" onPress={() => router.push('/terms-of-service')} />
+            <SettingsRow icon="📊" label="Data Export" sub="Download your FinZee data" onPress={handleDataExport} />
           </View>
 
           <View style={styles.disclaimer}>
