@@ -206,6 +206,17 @@ export default function HomeScreen() {
           }
         </View>
 
+        <TouchableOpacity style={[styles.weeklyWinsCard, Shadow.sm]} onPress={() => router.push('/weekly-wins')}>
+          <View style={styles.weeklyWinsTop}>
+            <View style={styles.weeklyWinsChip}>
+              <Text style={styles.weeklyWinsChipText}>Weekly Wins</Text>
+            </View>
+            <Text style={styles.weeklyWinsArrow}>→</Text>
+          </View>
+          <Text style={styles.weeklyWinsTitle}>See how much you saved from pause blocks this week</Text>
+          <Text style={styles.weeklyWinsBody}>Open your weekly report for spent, saved, goal progress, and top spending categories.</Text>
+        </TouchableOpacity>
+
         <View style={[styles.card, styles.trendCard]}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Spending this week</Text>
@@ -303,6 +314,52 @@ const styles = StyleSheet.create({
   statEmoji:    { fontSize: 15 },
   statLabel:    { fontSize: 9, fontWeight: '700', color: Colors.mute2, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 2 },
   statValue:    { fontSize: 13, fontWeight: '800', color: Colors.ink, letterSpacing: -0.3 },
+  weeklyWinsCard: {
+    marginHorizontal: 16,
+    marginTop: 14,
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.lg,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.border2,
+  },
+  weeklyWinsTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  weeklyWinsChip: {
+    backgroundColor: '#ede9fe',
+    borderRadius: Radius.full,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  weeklyWinsChipText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#5b21b6',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  weeklyWinsArrow: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: Colors.blue,
+  },
+  weeklyWinsTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: Colors.ink,
+    letterSpacing: -0.3,
+    lineHeight: 21,
+  },
+  weeklyWinsBody: {
+    fontSize: 12,
+    color: Colors.mute,
+    lineHeight: 18,
+    marginTop: 6,
+  },
   trendCard:    { marginTop: 14 },
   barsRow:      { flexDirection: 'row', alignItems: 'flex-end', gap: 5, height: 80 },
   healthCard:   { marginTop: 14, marginHorizontal: 16, borderRadius: Radius.lg, overflow: 'hidden' },
