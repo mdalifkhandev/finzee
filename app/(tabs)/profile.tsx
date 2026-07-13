@@ -262,7 +262,7 @@ export default function ProfileScreen() {
             <SettingsRow iconName="card-outline" label="Bank Account" sub="Not connected — tap to connect" onPress={() => router.push('/connect-bank')} />
             <SettingsRow iconName="fitness-outline" label="Apple Health" sub="Not connected" onPress={() => router.push('/(tabs)/health')} />
             <SettingsRow iconName="ellipse-outline" label="Oura Ring" sub="Connect for deep sleep + HRV data" onPress={() => router.push('/connect-wearable')} />
-            <SettingsRow iconName="bar-chart-outline" label="Fitbit" sub="Connect for sleep, activity, and heart rate data" onPress={() => router.push('/connect-wearable')} />
+            <SettingsRow iconName="bar-chart-outline" label="Google Health" sub="Connect for sleep, activity, and heart rate data" onPress={() => router.push('/connect-wearable')} />
           </View>
 
           <SectionHeader title="Your Data, Your Control" />
@@ -343,3 +343,4 @@ const styles = StyleSheet.create({
   versionWrap:   { alignItems: 'center', marginTop: 24, gap: 8 },
   version:       { fontSize: 11, color: Colors.mute2, textAlign: 'center' },
 });
+

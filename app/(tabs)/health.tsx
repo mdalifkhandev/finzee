@@ -170,7 +170,7 @@ export default function HealthScreen() {
           </LinearGradient>
 
           <Text style={styles.sectionTitle}>Connected Devices</Text>
-          {[{ name: 'Apple Watch', sub: 'Steps, HR, HRV, Sleep', icon: 'watch-outline' }, { name: 'Oura Ring', sub: 'Deep sleep + recovery', icon: 'ellipse-outline' }, { name: 'Garmin', sub: 'HRV + stress tracking', icon: 'fitness-outline' }]
+          {[{ name: 'Apple Watch', sub: 'Steps, HR, HRV, Sleep', icon: 'watch-outline' }, { name: 'Oura Ring', sub: 'Deep sleep + recovery', icon: 'ellipse-outline' }, { name: 'Garmin', sub: 'HRV + stress tracking', icon: 'fitness-outline' }, { name: 'Google Health', sub: 'Sleep + activity sync', icon: 'bar-chart-outline' }]
             .map(d => (
               <TouchableOpacity key={d.name} style={styles.deviceCard}>
                 <View style={styles.deviceIcon}><Ionicons name={d.icon as any} size={22} color={Colors.blue} /></View>
@@ -232,3 +232,4 @@ const styles = StyleSheet.create({
   enableBtnGrad: { padding: 15, alignItems: 'center' },
   enableBtnText: { fontSize: 14, fontWeight: '700', color: '#fff', letterSpacing: -0.2 },
 });
+

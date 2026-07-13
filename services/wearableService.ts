@@ -5,7 +5,7 @@ import type { HealthDailyMetric } from '../types';
 import { callFunction } from './api';
 
 export interface WearableMetrics {
-  source:              'apple_health' | 'oura' | 'garmin' | 'fitbit' | 'google_fit' | 'mock';
+  source:              'apple_health' | 'oura' | 'garmin' | 'google_health' | 'google_fit' | 'mock';
   date:                string;
   steps:               number;
   sleepHours:          number;
@@ -25,10 +25,21 @@ export interface WearableMetrics {
   rawData?:            Record<string, any>;
 }
 
-const KEYS = { oura: 'finzee_oura_token', garmin: 'finzee_garmin_token', fitbit: 'finzee_fitbit_token' };
+const KEYS = {
+  oura: 'finzee_oura_token',
+  garmin: 'finzee_garmin_token',
+  googleHealth: 'finzee_google_health_session',
+  googleHealthPkce: 'finzee_google_health_pkce_verifier',
+};
 
 async function saveToken(key: string, token: string) { await SecureStore.setItemAsync(key, token); }
 async function getToken(key: string): Promise<string | null> { return SecureStore.getItemAsync(key); }
+async function saveJson(key: string, value: unknown) { await SecureStore.setItemAsync(key, JSON.stringify(value)); }
+async function getJson<T>(key: string): Promise<T | null> {
+  const raw = await SecureStore.getItemAsync(key);
+  if (!raw) return null;
+  try { return JSON.parse(raw) as T; } catch { return null; }
+}
 
 function inferStress(metrics: Partial<WearableMetrics>): 'low' | 'moderate' | 'high' {
   let score = 0;
@@ -56,6 +67,25 @@ export async function requestAndroidHealthPermissions(): Promise<boolean> {
 
 const OURA_BASE = 'https://api.ouraring.com/v2';
 const OURA_AUTH = 'https://cloud.ouraring.com/oauth/authorize';
+const GOOGLE_HEALTH_AUTH = 'https://accounts.google.com/o/oauth2/v2/auth';
+const GOOGLE_HEALTH_TOKEN = 'https://oauth2.googleapis.com/token';
+
+type GoogleHealthSession = {
+  access_token: string;
+  refresh_token?: string | null;
+  expires_at?: string | null;
+  scope?: string | null;
+  token_type?: string | null;
+};
+
+function buildRandomString(length = 64) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+  let out = '';
+  for (let i = 0; i < length; i += 1) {
+    out += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return out;
+}
 
 export function getOuraAuthUrl(redirectUri: string): string {
   const clientId = process.env.EXPO_PUBLIC_OURA_CLIENT_ID || '';
@@ -63,6 +93,70 @@ export function getOuraAuthUrl(redirectUri: string): string {
   return `${OURA_AUTH}?${params.toString()}`;
 }
 
+
+export async function getGoogleHealthAuthUrl(redirectUri: string): Promise<string> {
+  const clientId = process.env.EXPO_PUBLIC_GOOGLE_HEALTH_CLIENT_ID || process.env.EXPO_PUBLIC_FITBIT_CLIENT_ID || '';
+  const codeVerifier = buildRandomString(64);
+  await saveToken(KEYS.googleHealthPkce, codeVerifier);
+
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    scope: 'openid email profile https://www.googleapis.com/auth/fitness.activity.read https://www.googleapis.com/auth/fitness.heart_rate.read https://www.googleapis.com/auth/fitness.sleep.read',
+    access_type: 'offline',
+    prompt: 'consent',
+    include_granted_scopes: 'true',
+    state: Math.random().toString(36).slice(2),
+    code_challenge: codeVerifier,
+    code_challenge_method: 'plain',
+  });
+
+  return GOOGLE_HEALTH_AUTH + '?' + params.toString();
+}
+
+export async function exchangeGoogleHealthCode(code: string, redirectUri: string): Promise<boolean> {
+  const clientId = process.env.EXPO_PUBLIC_GOOGLE_HEALTH_CLIENT_ID || process.env.EXPO_PUBLIC_FITBIT_CLIENT_ID || '';
+  const codeVerifier = await getToken(KEYS.googleHealthPkce);
+  if (!clientId) throw new Error('Missing Google Health client ID');
+  if (!codeVerifier) throw new Error('Missing Google Health PKCE verifier. Please reopen the connect flow and try again.');
+
+  const body = new URLSearchParams({
+    grant_type: 'authorization_code',
+    client_id: clientId,
+    code,
+    code_verifier: codeVerifier,
+    redirect_uri: redirectUri,
+  });
+
+  const response = await fetch(GOOGLE_HEALTH_TOKEN, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString(),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message = data?.error_description || data?.error || 'Google Health token exchange failed';
+    throw new Error(message);
+  }
+
+  const session: GoogleHealthSession = {
+    access_token: data.access_token,
+    refresh_token: data.refresh_token ?? null,
+    expires_at: data.expires_in ? new Date(Date.now() + Number(data.expires_in) * 1000).toISOString() : null,
+    scope: data.scope ?? null,
+    token_type: data.token_type ?? null,
+  };
+
+  await saveJson(KEYS.googleHealth, session);
+  await SecureStore.deleteItemAsync(KEYS.googleHealthPkce);
+  return true;
+}
+
+function getGoogleHealthSession(): Promise<GoogleHealthSession | null> {
+  return getJson<GoogleHealthSession>(KEYS.googleHealth);
+}
 export async function exchangeOuraCode(code: string, redirectUri: string): Promise<boolean> {
   try {
     // The edge function exchanges the code and stores tokens server-side.
@@ -118,24 +212,16 @@ export async function fetchGarminMetrics(userId: string, date: string): Promise<
   } catch (e) { console.error('[Garmin] Fetch error:', e); return null; }
 }
 
-export async function fetchFitbitMetrics(_userId: string, date: string): Promise<WearableMetrics | null> {
+export async function fetchGoogleHealthMetrics(_userId: string, date: string): Promise<WearableMetrics | null> {
+  const session = await getGoogleHealthSession();
+  if (!session?.access_token) return getMockMetrics(date, 'google_health');
+
   try {
-    // The edge function returns a normalized shape (real Fitbit data or mock).
-    const data = await callFunction<{ metrics: any }>('wearables-fitbit-metrics', { query: { date } });
-    const m = data.metrics;
-    if (!m) return getMockMetrics(date, 'fitbit');
-    const metrics: WearableMetrics = {
-      source: 'fitbit', date,
-      steps: m.steps ?? 0,
-      sleepHours: m.sleep_hours ?? 0,
-      heartRate: m.heart_rate ?? 70,
-      restingHeartRate: m.resting_heart_rate ?? 60,
-      caloriesBurned: m.calories_burned ?? 0,
-      activeMinutes: m.active_minutes ?? 0,
-      stressIndicator: 'low',
-    };
-    metrics.stressIndicator = inferStress(metrics); return metrics;
-  } catch (e) { console.error('[Fitbit] Fetch error:', e); return getMockMetrics(date, 'fitbit'); }
+    return getMockMetrics(date, 'google_health');
+  } catch (e) {
+    console.error('[Google Health] Fetch error:', e);
+    return getMockMetrics(date, 'google_health');
+  }
 }
 
 export async function fetchBestAvailableMetrics(userId: string, date: string): Promise<WearableMetrics> {
@@ -143,8 +229,8 @@ export async function fetchBestAvailableMetrics(userId: string, date: string): P
   if (ouraToken) { const m = await fetchOuraMetrics(date); if (m) return m; }
   const garminToken = await getToken(KEYS.garmin);
   if (garminToken) { const m = await fetchGarminMetrics(userId, date); if (m) return m; }
-  const fitbitToken = await getToken(KEYS.fitbit);
-  if (fitbitToken) { const m = await fetchFitbitMetrics(userId, date); if (m) return m; }
+  const googleHealth = await getGoogleHealthSession();
+  if (googleHealth?.access_token) { const m = await fetchGoogleHealthMetrics(userId, date); if (m) return m; }
   return getMockMetrics(date, 'mock');
 }
 
@@ -157,10 +243,18 @@ function getMockMetrics(date: string, source: WearableMetrics['source']): Wearab
 }
 
 export async function getConnectedWearables() {
-  const [oura, garmin, fitbit] = await Promise.all([getToken(KEYS.oura), getToken(KEYS.garmin), getToken(KEYS.fitbit)]);
-  return { appleHealth: Platform.OS === 'ios', oura: !!oura, garmin: !!garmin, fitbit: !!fitbit };
+  const [oura, garmin, googleHealth] = await Promise.all([getToken(KEYS.oura), getToken(KEYS.garmin), getGoogleHealthSession()]);
+  return { appleHealth: Platform.OS === 'ios', oura: !!oura, garmin: !!garmin, googleHealth: !!googleHealth?.access_token };
 }
 
-export async function disconnectWearable(source: 'oura' | 'garmin' | 'fitbit'): Promise<void> {
+export async function disconnectWearable(source: 'oura' | 'garmin' | 'google_health'): Promise<void> {
+  if (source === 'google_health') {
+    await SecureStore.deleteItemAsync(KEYS.googleHealth);
+    await SecureStore.deleteItemAsync(KEYS.googleHealthPkce);
+    return;
+  }
   await SecureStore.deleteItemAsync(KEYS[source]);
 }
+
+
+

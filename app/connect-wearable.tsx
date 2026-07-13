@@ -8,16 +8,16 @@ import { useNavigation } from '@react-navigation/native';
 import { Colors, Shadow, Radius, Gradients } from '../constants/theme';
 import FinZeeLogo from '../components/FinZeeLogo';
 import { useAuth } from '../hooks/useAuth';
-import { requestAppleHealthPermissions, requestAndroidHealthPermissions, getOuraAuthUrl, initiateGarminAuth, getConnectedWearables, disconnectWearable, fetchBestAvailableMetrics } from '../services/wearableService';
+import { requestAppleHealthPermissions, requestAndroidHealthPermissions, getOuraAuthUrl, getGoogleHealthAuthUrl, initiateGarminAuth, getConnectedWearables, disconnectWearable, fetchBestAvailableMetrics } from '../services/wearableService';
 import { CONFIG } from '../constants/config';
 
-interface Wearable { id: 'apple_health' | 'oura' | 'garmin' | 'fitbit' | 'google_fit'; name: string; brand: string; icon: string; description: string; features: string[]; available: boolean; comingSoon?: boolean; }
+interface Wearable { id: 'apple_health' | 'oura' | 'garmin' | 'google_health' | 'google_fit'; name: string; brand: string; icon: string; description: string; features: string[]; available: boolean; comingSoon?: boolean; }
 
 const WEARABLES: Wearable[] = [
   { id: 'apple_health', name: 'Apple Health', brand: 'Apple', icon: 'heart-outline', description: 'Connect Apple Watch and iPhone health data including steps, sleep, heart rate, and HRV.', features: ['Steps', 'Sleep analysis', 'Heart rate', 'HRV', 'Blood oxygen', 'Mindfulness'], available: Platform.OS === 'ios' },
   { id: 'oura', name: 'Oura Ring', brand: 'Oura', icon: 'ellipse-outline', description: 'The most accurate sleep and recovery tracker. Connects via Oura Cloud API.', features: ['Sleep score', 'Deep sleep', 'REM sleep', 'HRV', 'Readiness score', 'SPO₂'], available: true },
   { id: 'garmin', name: 'Garmin Connect', brand: 'Garmin', icon: 'watch-outline', description: 'Connect your Garmin device for stress tracking, Body Battery, and fitness data.', features: ['Body Battery', 'Stress score', 'Sleep', 'HRV', 'Steps', 'Active minutes'], available: true },
-  { id: 'fitbit', name: 'Fitbit', brand: 'Google', icon: 'bar-chart-outline', description: 'Connect your Fitbit device for sleep, activity, and heart rate data.', features: ['Sleep stages', 'Heart rate', 'Steps', 'Active zone minutes', 'SpO₂'], available: true },
+  { id: 'google_health', name: 'Google Health', brand: 'Google', icon: 'bar-chart-outline', description: 'Connect your Google Health data for sleep, activity, and heart rate insights.', features: ['Sleep', 'Heart rate', 'Steps', 'Active minutes', 'Health score'], available: true },
   { id: 'google_fit', name: 'Google Fit', brand: 'Google', icon: 'walk-outline', description: 'Android health data hub — steps, heart rate, and activity.', features: ['Steps', 'Heart rate', 'Active minutes', 'Calories'], available: Platform.OS === 'android', comingSoon: true },
 ];
 
@@ -66,7 +66,7 @@ export default function ConnectWearableScreen() {
 
   async function loadConnected() {
     const status = await getConnectedWearables();
-    setConnected({ apple_health: status.appleHealth, oura: status.oura, garmin: status.garmin, fitbit: status.fitbit });
+    setConnected({ apple_health: status.appleHealth, oura: status.oura, garmin: status.garmin, google_health: status.googleHealth });
   }
 
   function setLoad(id: string, val: boolean) { setLoading(prev => ({ ...prev, [id]: val })); }
@@ -92,9 +92,12 @@ export default function ConnectWearableScreen() {
           else { const authUrl = await initiateGarminAuth(user.id); if (authUrl) await Linking.openURL(authUrl); }
           break;
         }
-        case 'fitbit': {
-          if (CONFIG.DEV_MODE) { setConnected(prev => ({ ...prev, fitbit: true })); Alert.alert('Fitbit Connected', '[DEV MODE] Simulated. Real flow requires FITBIT_CLIENT_ID on backend.'); }
-          else await Linking.openURL(`https://www.fitbit.com/oauth2/authorize?response_type=code&client_id=${process.env.EXPO_PUBLIC_FITBIT_CLIENT_ID}&scope=activity%20heartrate%20sleep%20oxygen_saturation&redirect_uri=finzeeai://fitbit-callback`);
+        case 'google_health': {
+          if (CONFIG.DEV_MODE) { setConnected(prev => ({ ...prev, google_health: true })); Alert.alert('Google Health Connected', '[DEV MODE] Simulated. Real OAuth requires EXPO_PUBLIC_GOOGLE_HEALTH_CLIENT_ID.'); }
+          else {
+            const authUrl = await getGoogleHealthAuthUrl('finzeeai://google-health-callback');
+            await Linking.openURL(authUrl);
+          }
           break;
         }
       }
@@ -232,3 +235,6 @@ const styles = StyleSheet.create({
   privacyIcon:    { fontSize: 16, flexShrink: 0 },
   privacyText:    { fontSize: 11, color: Colors.purple, lineHeight: 17, flex: 1, fontWeight: '500' },
 });
+
+
+
