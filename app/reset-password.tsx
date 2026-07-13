@@ -27,6 +27,17 @@ export default function ResetPasswordScreen() {
   const [linkError, setLinkError] = useState<string | null>(null);
   const recoveryHandledRef = useRef(false);
 
+  console.log('[ResetPassword] render snapshot:', {
+    ready,
+    done,
+    checkingLink,
+    loading,
+    linkError,
+    hasRecoveryUrl: !!recoveryUrl,
+    recoveryUrlPreview: recoveryUrl ? recoveryUrl.slice(0, 220) : null,
+    recoveryHandled: recoveryHandledRef.current,
+  });
+
   async function persistRecoverySession(session: { access_token: string; refresh_token: string } | null | undefined) {
     console.log('[ResetPassword] persistRecoverySession called:', {
       hasSession: !!session,
@@ -49,6 +60,13 @@ export default function ResetPasswordScreen() {
   useEffect(() => {
     let mounted = true;
     console.log('[ResetPassword] screen mounted');
+    console.log('[ResetPassword] effect boot:', {
+      ready,
+      done,
+      checkingLink,
+      loading,
+      recoveryHandled: recoveryHandledRef.current,
+    });
 
     const applySessionFromUrl = async (url?: string | null) => {
       console.log('[ResetPassword] applySessionFromUrl called:', {
@@ -60,6 +78,7 @@ export default function ResetPasswordScreen() {
       if (mounted) setRecoveryUrl(url);
       if (mounted) setLinkError(null);
       console.log('[ResetPassword] incoming url:', url);
+      console.log('[ResetPassword] url length:', url.length);
 
       try {
         const [baseUrl, fragment = ''] = url.split('#');
@@ -73,6 +92,13 @@ export default function ResetPasswordScreen() {
         const errorCode = params.get('error_code');
         const errorDescription = params.get('error_description');
         const error = params.get('error');
+        console.log('[ResetPassword] raw token values:', {
+          accessToken: maskValue(accessToken),
+          refreshToken: maskValue(refreshToken),
+          code: maskValue(code),
+          tokenHash: maskValue(tokenHash),
+          type,
+        });
         console.log('[ResetPassword] parsed params:', {
           baseUrl,
           code,
@@ -84,6 +110,12 @@ export default function ResetPasswordScreen() {
           errorCode,
           errorDescription,
           fragmentPreview: fragment ? fragment.slice(0, 120) : null,
+        });
+        console.log('[ResetPassword] full URL parts:', {
+          baseUrl,
+          search: parsed.search,
+          hashPreview: parsed.hash ? parsed.hash.slice(0, 120) : null,
+          fragmentLength: fragment.length,
         });
 
         if (error || errorCode || errorDescription) {
@@ -112,7 +144,10 @@ export default function ResetPasswordScreen() {
             recoveryHandledRef.current = true;
             setReady(true);
           }
-          console.log('[ResetPassword] recovery session ready via access_token/refresh_token');
+          console.log('[ResetPassword] recovery session ready via access_token/refresh_token', {
+            ready: true,
+            recoveryHandled: recoveryHandledRef.current,
+          });
           return;
         }
 
@@ -123,6 +158,9 @@ export default function ResetPasswordScreen() {
             ok: !error,
             hasSession: !!data?.session,
             error: error?.message || null,
+            errorCode: error?.code || null,
+            errorStatus: error?.status || null,
+            sessionUserId: data?.session?.user?.id || null,
           });
           if (error) throw error;
           await persistRecoverySession(data.session);
@@ -130,7 +168,10 @@ export default function ResetPasswordScreen() {
             recoveryHandledRef.current = true;
             setReady(true);
           }
-          console.log('[ResetPassword] recovery session ready via code');
+          console.log('[ResetPassword] recovery session ready via code', {
+            ready: true,
+            recoveryHandled: recoveryHandledRef.current,
+          });
           return;
         }
 
@@ -144,6 +185,9 @@ export default function ResetPasswordScreen() {
             ok: !error,
             hasSession: !!data?.session,
             error: error?.message || null,
+            errorCode: error?.code || null,
+            errorStatus: error?.status || null,
+            sessionUserId: data?.session?.user?.id || null,
           });
           if (error) throw error;
           await persistRecoverySession(data.session);
@@ -151,7 +195,10 @@ export default function ResetPasswordScreen() {
             recoveryHandledRef.current = true;
             setReady(true);
           }
-          console.log('[ResetPassword] recovery session ready via token_hash');
+          console.log('[ResetPassword] recovery session ready via token_hash', {
+            ready: true,
+            recoveryHandled: recoveryHandledRef.current,
+          });
           return;
         }
 
@@ -166,12 +213,14 @@ export default function ResetPasswordScreen() {
 
     Linking.getInitialURL().then(async (url) => {
       console.log('[ResetPassword] Linking.getInitialURL result:', url ? url.slice(0, 180) : null);
+      console.log('[ResetPassword] getInitialURL raw:', url);
       await applySessionFromUrl(url);
       if (mounted) setCheckingLink(false);
     });
 
     const subscription = Linking.addEventListener('url', ({ url }) => {
       console.log('[ResetPassword] Linking url event received:', url ? url.slice(0, 180) : null);
+      console.log('[ResetPassword] url event raw:', url);
       void applySessionFromUrl(url);
     });
 
@@ -181,6 +230,8 @@ export default function ResetPasswordScreen() {
         hasAccessToken: !!session?.access_token,
         userId: session?.user?.id || null,
         recoveryHandled: recoveryHandledRef.current,
+        accessTokenPreview: maskValue(session?.access_token ?? null),
+        refreshTokenPreview: maskValue(session?.refresh_token ?? null),
       });
       if (mounted) {
         if (recoveryHandledRef.current) return;
@@ -197,8 +248,6 @@ export default function ResetPasswordScreen() {
 
   async function handleUpdate() {
     console.log('[ResetPassword] handleUpdate called:', {
-      passwordLength: password.length,
-      confirmPasswordLength: confirmPassword.length,
       ready,
       checkingLink,
       done,
@@ -216,11 +265,14 @@ export default function ResetPasswordScreen() {
 
     setLoading(true);
     const sessionReady = await (async () => {
+      console.log('[ResetPassword] handleUpdate session bootstrap start');
       const { data: { session } } = await supabase.auth.getSession();
       console.log('[ResetPassword] handleUpdate session check #1:', {
         hasSession: !!session,
         hasAccessToken: !!session?.access_token,
         userId: session?.user?.id || null,
+        accessTokenPreview: maskValue(session?.access_token ?? null),
+        refreshTokenPreview: maskValue(session?.refresh_token ?? null),
       });
       if (session) return true;
       if (recoveryUrl) {
@@ -240,6 +292,8 @@ export default function ResetPasswordScreen() {
             code: maskValue(code),
             hasAccessToken: !!accessToken,
             hasRefreshToken: !!refreshToken,
+            accessTokenPreview: maskValue(accessToken),
+            refreshTokenPreview: maskValue(refreshToken),
           });
 
           if (type === 'recovery' && accessToken && refreshToken) {
@@ -252,6 +306,9 @@ export default function ResetPasswordScreen() {
               ok: !error,
               hasSession: !!data?.session,
               error: error?.message || null,
+              errorCode: error?.code || null,
+              errorStatus: error?.status || null,
+              sessionUserId: data?.session?.user?.id || null,
             });
             if (error) throw error;
             await persistRecoverySession(data.session);
@@ -265,6 +322,9 @@ export default function ResetPasswordScreen() {
               ok: !error,
               hasSession: !!data?.session,
               error: error?.message || null,
+              errorCode: error?.code || null,
+              errorStatus: error?.status || null,
+              sessionUserId: data?.session?.user?.id || null,
             });
             if (error) throw error;
             await persistRecoverySession(data.session);
@@ -280,8 +340,11 @@ export default function ResetPasswordScreen() {
         hasSession: !!latestSession,
         hasAccessToken: !!latestSession?.access_token,
         userId: latestSession?.user?.id || null,
+        accessTokenPreview: maskValue(latestSession?.access_token ?? null),
+        refreshTokenPreview: maskValue(latestSession?.refresh_token ?? null),
       });
       if (latestSession) return true;
+      console.warn('[ResetPassword] handleUpdate: no session tokens available after recovery URL check');
       return false;
     })();
 
@@ -296,6 +359,8 @@ export default function ResetPasswordScreen() {
     console.log('[ResetPassword] updateUser result:', {
       ok: !error,
       error: error?.message || null,
+      errorCode: error?.code || null,
+      errorStatus: error?.status || null,
     });
     setLoading(false);
 
