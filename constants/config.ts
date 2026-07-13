@@ -3,6 +3,7 @@ export const CONFIG = {
   API_BASE_URL: process.env.EXPO_PUBLIC_API_BASE_URL || '',
   SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL || '',
   SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '',
+  WEB_APP_URL: process.env.EXPO_PUBLIC_WEB_APP_URL || 'https://finzee-ai.vercel.app',
 };
 
 export const DEV_SAMPLE = {

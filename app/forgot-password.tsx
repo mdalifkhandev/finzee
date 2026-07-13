@@ -20,6 +20,11 @@ export default function ForgotPasswordScreen() {
   const [sent, setSent]       = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  const goBack = () => {
+    if (navigation.canGoBack()) navigation.goBack();
+    else router.replace('/login');
+  };
+
   async function handleReset() {
     if (!email.trim()) { Alert.alert('Missing email', 'Please enter your email address.'); return; }
     console.log('[ForgotPassword] handleReset called:', { email: email.trim() });
@@ -123,7 +128,3 @@ const styles = StyleSheet.create({
   signInLink:   { alignItems: 'center', marginTop: 20 },
   signInText:   { fontSize: 14, color: Colors.mute },
 });
-  const goBack = () => {
-    if (navigation.canGoBack()) navigation.goBack();
-    else router.replace('/login');
-  };

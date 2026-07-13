@@ -1,15 +1,13 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { runAI } from "../_ai.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-const CHAT_MODEL = Deno.env.get('OPENAI_CHAT_MODEL') || 'gpt-4o';
-const FALLBACK = Deno.env.get('OPENAI_FALLBACK_MODEL') || 'gpt-4o';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
@@ -311,107 +309,6 @@ function buildIntentHint(message: string) {
   return "general";
 }
 
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(Number.isFinite(value) ? value : 0);
-}
-
-function buildFallbackReply(message: string, userContext: Record<string, unknown> | null) {
-  const goals = Array.isArray(userContext?.goals) ? userContext.goals as Record<string, unknown>[] : [];
-  const activeGoals = Array.isArray(userContext?.active_goals) ? userContext.active_goals as Record<string, unknown>[] : goals;
-  const allGoals = activeGoals.length ? activeGoals : goals;
-  const pauseSummary = userContext?.pause_summary as Record<string, unknown> | undefined;
-  const pauseItems = Array.isArray(userContext?.pause_items) ? userContext.pause_items as Record<string, unknown>[] : [];
-  const normalizedMessage = message.toLowerCase();
-  const profile = userContext?.profile as Record<string, unknown> | null;
-  const userName = String(profile?.first_name ?? "there");
-  const financialSummary = userContext?.financial_summary as Record<string, unknown> | undefined;
-
-  if (/(pause list|paused|pause|hold|impulse|buy this|should i buy|should i pause|how many pause|how many held)/i.test(normalizedMessage)) {
-    const total = Number(pauseSummary?.total ?? pauseItems.length ?? 0);
-    const pending = Number(pauseSummary?.pending ?? pauseItems.filter((item) => item.status === "pending").length ?? 0);
-    const held = Number(pauseSummary?.currently_held ?? pauseItems.filter((item) => item.status === "pending").reduce((sum, item) => sum + Number(item.price ?? 0), 0) ?? 0);
-    const saved = Number(pauseSummary?.total_saved ?? pauseItems.filter((item) => item.status === "skipped").reduce((sum, item) => sum + Number(item.price ?? 0), 0) ?? 0);
-
-    return [
-      `You have ${pending} item${pending === 1 ? "" : "s"} currently on your Pause List.`,
-      `• Total pause items: ${total}.`,
-      `• Currently held: ${formatCurrency(held)}.`,
-      `• Saved so far: ${formatCurrency(saved)}.`,
-      `Ask me about a specific item and I’ll help you decide what to do next.`,
-    ].join("\n");
-  }
-
-  const houseGoal = allGoals.find((goal) => {
-    const name = String(goal.name ?? "").toLowerCase();
-    const category = String(goal.category ?? "").toLowerCase();
-    const kind = String(goal.kind ?? "").toLowerCase();
-    return name.includes("house") || name.includes("home") || category.includes("house") || category.includes("home") || kind.includes("house") || kind.includes("home");
-  }) || allGoals[0];
-
-  if (houseGoal && /(house|home|goal)/i.test(normalizedMessage)) {
-    const current = Number(houseGoal.current_amount ?? 0);
-    const target = Number(houseGoal.target_amount ?? 0);
-    const remaining = Math.max(target - current, 0);
-    const pct = target > 0 ? Math.min(Math.round((current / target) * 100), 100) : 0;
-    const status = remaining <= 0 ? "You’ve already hit it 🎉" : `You’re ${pct}% there.`;
-    return [
-      `You're on the right track with your house goal.`,
-      `• ${houseGoal.name}: ${formatCurrency(current)} of ${formatCurrency(target)} (${pct}%).`,
-      `• Remaining: ${formatCurrency(remaining)}.`,
-      `• Next step: keep automating small transfers each week.`,
-      status,
-    ].join("\n");
-  }
-
-  if (financialSummary) {
-    const balance = Number(financialSummary.total_balance ?? 0);
-    const accounts = Number(financialSummary.accounts_count ?? 0);
-    const activeGoalsCount = Number(financialSummary.active_goals_count ?? 0);
-    return [
-      `Hi ${userName}, I can see your current financial snapshot.`,
-      `• Balance tracked: ${formatCurrency(balance)} across ${accounts} account${accounts === 1 ? "" : "s"}.`,
-      `• Active goals: ${activeGoalsCount}.`,
-      `• Pause items: ${Number(pauseSummary?.total ?? pauseItems.length ?? 0)}.`,
-      `Ask me about your house goal, pause list, or spending and I’ll answer from your data.`,
-    ].join("\n");
-  }
-
-  if (/(goal|goals|savings|save)/i.test(normalizedMessage) && allGoals.length > 0) {
-    const goalLines = allGoals.slice(0, 3).map((goal) => {
-      const current = Number(goal.current_amount ?? 0);
-      const target = Number(goal.target_amount ?? 0);
-      const pct = target > 0 ? Math.min(Math.round((current / target) * 100), 100) : 0;
-      return `• ${goal.name}: ${formatCurrency(current)} of ${formatCurrency(target)} (${pct}%).`;
-    });
-    return [
-      `You do have active goals I can see.`,
-      ...goalLines,
-      `• Best move: keep funding the highest-priority goal first.`,
-      `You're building real momentum 💪`,
-    ].join("\n");
-  }
-
-  if (allGoals.length > 0) {
-    const goalLines = allGoals.slice(0, 2).map((goal) => {
-      const current = Number(goal.current_amount ?? 0);
-      const target = Number(goal.target_amount ?? 0);
-      const pct = target > 0 ? Math.min(Math.round((current / target) * 100), 100) : 0;
-      return `• ${goal.name}: ${pct}% complete.`;
-    });
-    return [
-      `I can see your goals, but I need a more specific question to give the best answer.`,
-      ...goalLines,
-      `Try asking: "Am I on track for my house goal?" or "How far am I from my biggest goal?"`,
-    ].join("\n");
-  }
-
-  return "I don't see enough connected data yet to personalize this fully. Link a bank or add a goal, and I can get much more specific.";
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -494,75 +391,22 @@ serve(async (req) => {
     const languageInstruction = preferredLanguage 
       ? `\n\nLANGUAGE: Respond in ${preferredLanguage}. Keep financial terms clear and universally understood (e.g., "budget", "savings", "income"). If a term has no clear translation, use the English term with a brief explanation.`
       : '';
+    const result = await runAI({
+      system: SYSTEM_PROMPT + languageInstruction,
+      user: [
+        `Intent: ${intent}`,
+        `Persona: ${JSON.stringify(persona)}`,
+        `Data: ${JSON.stringify(userContext)}`,
+        Array.isArray(providedContext?.messages) && providedContext.messages.length
+          ? `Conversation history:\n${providedContext.messages.map((entry: any) => `${String(entry.role).toUpperCase()}: ${entry.content}`).join('\n')}`
+          : '',
+        `Question: ${message}`,
+      ].filter(Boolean).join('\n\n'),
+      maxTokens: 400,
+      temperature: 0.2,
+    });
 
-    const payload = {
-      model: CHAT_MODEL,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT + languageInstruction },
-        ...(Array.isArray(providedContext?.messages) ? providedContext.messages : []),
-        { 
-          role: 'user', 
-          content: `Intent: ${intent}\nPersona: ${JSON.stringify(persona)}\nData: ${JSON.stringify(userContext)}\nQuestion: ${message}` 
-        }
-      ],
-      temperature: 0.2
-    };
-
-    let text: string;
-    let usage: unknown;
-    let fallback = false;
-
-    try {
-      if (!OPENAI_API_KEY) {
-        throw new Error("OPENAI_API_KEY not configured");
-      }
-
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) throw new Error(await response.text());
-
-      const data = await response.json();
-      text = (data.choices?.[0]?.message?.content ?? '').trim();
-      usage = data.usage;
-    } catch (err) {
-      console.log(`Primary model failed, trying fallback ${FALLBACK}...`, err);
-      fallback = true;
-      try {
-        if (OPENAI_API_KEY) {
-          const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${OPENAI_API_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ ...payload, model: FALLBACK }),
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            text = (data.choices?.[0]?.message?.content ?? '').trim();
-            usage = data.usage;
-          }
-        }
-      } catch (fallbackErr) {
-        console.warn("Fallback model failed, using deterministic reply:", fallbackErr);
-      }
-    }
-
-    if (!text) {
-      text = buildFallbackReply(message, userContext);
-    }
-
-    if (!/[\w]/.test(text)) {
-      text = buildFallbackReply(message, userContext);
-    }
+    const text = result.text.trim();
 
     // Save messages to database
     const { error: saveUserError } = await supabase
@@ -581,9 +425,7 @@ serve(async (req) => {
       console.error('Error saving assistant message:', saveAssistantError);
     }
 
-    console.log(`Response generated, fallback: ${fallback}, tokens: ${(usage as any)?.total_tokens}`);
-
-    return new Response(JSON.stringify({ text, usage, fallback }), {
+    return new Response(JSON.stringify({ text, model: result.model, provider: result.provider }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 

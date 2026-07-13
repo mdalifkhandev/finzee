@@ -16,6 +16,33 @@ interface Message { id: string; role: 'ai' | 'user'; text: string; ts: Date; }
 interface ChatResponse { text: string; }
 interface AICoachResponse { coachingResponse: string; }
 
+function getReadableErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  if (typeof error === 'string' && error.trim()) {
+    return error;
+  }
+
+  if (error && typeof error === 'object') {
+    const record = error as Record<string, any>;
+    const nested = [
+      record?.message,
+      record?.error?.message,
+      record?.error,
+      record?.detail,
+      record?.raw,
+    ];
+    for (const value of nested) {
+      if (typeof value === 'string' && value.trim()) return value;
+      if (value instanceof Error && value.message.trim()) return value.message;
+    }
+  }
+
+  return fallback;
+}
+
 const QUICK_PROMPTS = [
   'Am I on track for my house goal?', 'Why did my score dip?', 'Help me stop impulse spending',
   "What should I do today?", 'How does my sleep affect spending?', 'Review my week with me',
@@ -117,23 +144,30 @@ export default function CoachScreen() {
           aiText = data.text;
         } catch (chatError) {
           console.warn('[Coach] chat function failed, falling back to ai-coach:', chatError);
-          const data = await callFunction<AICoachResponse>('ai-coach', {
-            method: 'POST',
-            body: {
-              userQuestion: trimmed,
-              spendingSummary: {
-                recentConversation: conversation,
+          try {
+            const data = await callFunction<AICoachResponse>('ai-coach', {
+              method: 'POST',
+              body: {
+                userQuestion: trimmed,
+                spendingSummary: {
+                  recentConversation: conversation,
+                },
+                recentInsights: [],
               },
-              recentInsights: [],
-            },
-          });
-          aiText = data.coachingResponse;
+            });
+            aiText = data.coachingResponse;
+          } catch (coachError) {
+            aiText = getReadableErrorMessage(
+              coachError,
+              getReadableErrorMessage(chatError, 'I couldn’t generate a reply from your connected data right now. Please try again.')
+            );
+          }
         }
       }
       setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'ai', text: aiText, ts: new Date() }]);
     } catch (error) {
       console.warn('[Coach] all live AI routes failed:', error);
-      setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'ai', text: "I'm having trouble connecting right now. Please try again in a moment.", ts: new Date() }]);
+      setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'ai', text: getReadableErrorMessage(error, 'I couldn’t generate a reply from your connected data just now. Please try again in a moment.'), ts: new Date() }]);
     } finally {
       setTyping(false);
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);

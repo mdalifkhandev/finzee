@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
+import { Platform } from 'react-native';
 import { supabase } from '../services/supabaseClient';
 import { callFunction } from '../services/api';
+import { CONFIG } from '../constants/config';
 
 export function useAuth() {
   const [user, setUser] = useState<any>(null);
@@ -50,8 +52,13 @@ export function useAuth() {
 
   const resetPassword = async (email: string) => {
     try {
+      const redirectTo =
+        Platform.OS === 'web'
+          ? `${CONFIG.WEB_APP_URL.replace(/\/$/, '')}/reset-password`
+          : 'finzeeai://reset-password';
+
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: 'finzeeai://reset-password',
+        redirectTo,
       });
       if (error) return { error: error.message };
       return { data: true };
