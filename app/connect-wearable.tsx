@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, StatusB
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import { Colors, Shadow, Radius, Gradients } from '../constants/theme';
 import FinZeeLogo from '../components/FinZeeLogo';
 import { useAuth } from '../hooks/useAuth';
@@ -50,10 +51,16 @@ function WearableCard({ wearable, connected, onConnect, onDisconnect, loading }:
 
 export default function ConnectWearableScreen() {
   const { user } = useAuth();
+  const navigation = useNavigation();
   const [connected, setConnected] = useState<Record<string, boolean>>({});
   const [loading, setLoading]     = useState<Record<string, boolean>>({});
   const [testData, setTestData]   = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
+
+  const goBack = () => {
+    if (navigation.canGoBack()) navigation.goBack();
+    else router.replace('/(tabs)/profile');
+  };
 
   useEffect(() => { loadConnected(); }, []);
 
@@ -133,7 +140,7 @@ export default function ConnectWearableScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.blue} />}
       >
         <LinearGradient colors={['#0f172a', '#1e1b4b', '#4c1d95']} style={styles.hero}>
-          <TouchableOpacity style={styles.back} onPress={() => router.back()}><Ionicons name="arrow-back" size={16} color="rgba(255,255,255,0.85)" /><Text style={styles.backText}>Back</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.back} onPress={goBack}><Ionicons name="arrow-back" size={16} color="rgba(255,255,255,0.85)" /><Text style={styles.backText}>Back</Text></TouchableOpacity>
           <FinZeeLogo variant="light" width={130} />
           <Text style={styles.heroTitle}>Connect your <Text style={styles.heroAccent}>wearable.</Text></Text>
           <Text style={styles.heroSub}>FinZee AI connects your body signals to your spending behavior. The smarter your data, the smarter your decisions.</Text>

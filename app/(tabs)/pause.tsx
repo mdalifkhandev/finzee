@@ -127,7 +127,7 @@ export default function PauseScreen() {
             : items.map(item => <PauseCard key={item.id} item={item} onBuy={id => updateStatus(id, 'bought')} onSkip={id => updateStatus(id, 'skipped')} />)
           }
 
-          <TouchableOpacity style={styles.addWrap} onPress={() => router.push('/purchase-check')}>
+          <TouchableOpacity style={styles.addWrap} onPress={() => router.push('/purchase-check?from=pause')}>
             <LinearGradient colors={['#059669', '#0d9488']} style={styles.addBtn}><Text style={styles.addBtnText}>+ Add Item to Pause List</Text></LinearGradient>
           </TouchableOpacity>
           <View style={styles.aiNote}><Ionicons name="sparkles-outline" size={16} color="#5b21b6" /><Text style={styles.aiNoteText}>Research shows a 24-hour pause reduces impulse purchases by up to 70%. FinZee is helping you build that habit.</Text></View>

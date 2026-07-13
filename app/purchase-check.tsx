@@ -6,7 +6,8 @@ import {
   StatusBar, Alert, ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Shadow, Radius, Gradients } from '../constants/theme';
 import FinZeeLogo from '../components/FinZeeLogo';
@@ -28,6 +29,8 @@ const CATEGORIES = ['Electronics', 'Clothing', 'Dining', 'Home', 'Fitness', 'Tra
 
 export default function PurchaseCheckScreen() {
   const { user } = useAuth();
+  const params = useLocalSearchParams<{ from?: string }>();
+  const navigation = useNavigation();
   const [itemName,  setItemName]  = useState('');
   const [price,     setPrice]     = useState('');
   const [category,  setCategory]  = useState('');
@@ -37,6 +40,20 @@ export default function PurchaseCheckScreen() {
   const [result,    setResult]    = useState<ReturnType<typeof evaluatePurchase> | null>(null);
   const [loading,   setLoading]   = useState(false);
   const [savedToPause, setSavedToPause] = useState(false);
+
+  const goBack = () => {
+    const origin = Array.isArray(params.from) ? params.from[0] : params.from;
+    if (origin === 'pause') {
+      router.replace('/(tabs)/pause');
+      return;
+    }
+    if (origin === 'home') {
+      router.replace('/(tabs)/home');
+      return;
+    }
+    if (navigation.canGoBack()) navigation.goBack();
+    else router.replace('/(tabs)/home');
+  };
 
   async function handleEvaluate() {
     if (!itemName.trim() || !price.trim()) { Alert.alert('Missing info', 'Please enter an item name and price.'); return; }
@@ -93,7 +110,7 @@ export default function PurchaseCheckScreen() {
       <StatusBar barStyle="light-content" />
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1 }}>
         <LinearGradient colors={['#06080f', '#0f172a', '#1a56db']} style={styles.hero}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}><Ionicons name="arrow-back" size={16} color="rgba(255,255,255,0.65)" /><Text style={styles.backText}>Back</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.backBtn} onPress={goBack}><Ionicons name="arrow-back" size={16} color="rgba(255,255,255,0.65)" /><Text style={styles.backText}>Back</Text></TouchableOpacity>
           <FinZeeLogo variant="light" width={120} />
           <Text style={styles.heroTitle}>Should I Buy This?</Text>
           <Text style={styles.heroSub}>FinZee AI evaluates your purchase before you spend</Text>

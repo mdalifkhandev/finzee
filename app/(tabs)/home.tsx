@@ -190,7 +190,7 @@ export default function HomeScreen() {
           <View style={styles.insightChip}><Ionicons name="sparkles-outline" size={10} color="#5b21b6" /><Text style={styles.insightChipText}>Today's Insight</Text></View>
           <Text style={styles.insightTitle}>{insightTitle}</Text>
           <Text style={styles.insightBody}>{insightBody}</Text>
-          <TouchableOpacity style={styles.insightCta} onPress={() => router.push('/purchase-check')}>
+          <TouchableOpacity style={styles.insightCta} onPress={() => router.push('/purchase-check?from=home')}>
             <Text style={styles.insightCtaText}>Review with FinZee AI</Text>
             <Text style={styles.insightCtaArrow}>→</Text>
           </TouchableOpacity>
@@ -256,7 +256,7 @@ export default function HomeScreen() {
         <Text style={styles.sectionTitle}>More Features</Text>
         <View style={styles.actionsGrid}>
           {[
-            { label: 'Should I\nBuy This?', icon: 'cart-outline', color: Colors.blueTint, textColor: Colors.blue, route: '/purchase-check' },
+            { label: 'Should I\nBuy This?', icon: 'cart-outline', color: Colors.blueTint, textColor: Colors.blue, route: '/purchase-check?from=home' },
             { label: 'Pause\nPurchase', icon: 'pause-circle-outline', color: Colors.greenTint, textColor: Colors.green, route: '/(tabs)/pause' },
             { label: 'Ask\nFinZee AI', icon: 'chatbubble-ellipses-outline', color: Colors.purpleTint, textColor: Colors.purple, route: '/(tabs)/coach' },
             { label: 'My\nGoals', icon: 'trophy-outline', color: Colors.amberTint, textColor: Colors.amber, route: '/(tabs)/goals' },

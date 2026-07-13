@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Radius, Shadow } from '../constants/theme';
 import { useAuth } from '../hooks/useAuth';
@@ -53,6 +54,7 @@ function joinList(value?: string[] | null) {
 
 export default function EditProfileScreen() {
   const { user } = useAuth();
+  const navigation = useNavigation();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [firstName, setFirstName] = useState('');
@@ -66,6 +68,11 @@ export default function EditProfileScreen() {
   const [goals, setGoals] = useState('');
   const [preferredLanguage, setPreferredLanguage] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+
+  const goBack = () => {
+    if (navigation.canGoBack()) navigation.goBack();
+    else router.replace('/(tabs)/profile');
+  };
 
   const load = useCallback(async () => {
     if (!user) {
@@ -152,7 +159,7 @@ export default function EditProfileScreen() {
       });
 
       Alert.alert('Profile updated', 'Your profile information has been saved successfully.', [
-        { text: 'OK', onPress: () => router.back() },
+        { text: 'OK', onPress: goBack },
       ]);
       if (profile?.first_name !== undefined) {
         void load();
@@ -175,7 +182,7 @@ export default function EditProfileScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.blue} />}
         >
           <LinearGradient colors={['#06080f', '#0f172a', '#1a2444']} style={styles.hero}>
-            <TouchableOpacity style={styles.backRow} onPress={() => router.back()}>
+            <TouchableOpacity style={styles.backRow} onPress={goBack}>
               <Ionicons name="arrow-back" size={18} color="rgba(255,255,255,0.9)" />
               <Text style={styles.backText}>Back</Text>
             </TouchableOpacity>

@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Radius, Shadow } from '../constants/theme';
 import { useAuth } from '../hooks/useAuth';
@@ -44,10 +45,16 @@ function money(value: number | undefined) {
 
 export default function WeeklyWinsScreen() {
   const { user } = useAuth();
+  const navigation = useNavigation();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState('');
   const [stats, setStats] = useState<WeeklyStats>({});
+
+  const goBack = () => {
+    if (navigation.canGoBack()) navigation.goBack();
+    else router.replace('/(tabs)/home');
+  };
 
   const load = useCallback(async () => {
     if (!user) {
@@ -92,7 +99,7 @@ export default function WeeklyWinsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <LinearGradient colors={['#06080f', '#0f172a', '#1e1b4b']} style={styles.hero}>
-          <TouchableOpacity style={styles.backRow} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backRow} onPress={goBack}>
             <Ionicons name="arrow-back" size={18} color="rgba(255,255,255,0.9)" />
             <Text style={styles.backText}>Back</Text>
           </TouchableOpacity>

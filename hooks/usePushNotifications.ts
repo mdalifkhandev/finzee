@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { useAuth } from './useAuth';
@@ -10,9 +10,11 @@ import {
 
 export function usePushNotifications() {
   const { user } = useAuth();
+  const syncedUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!user || Platform.OS === 'web') return;
+    if (syncedUserIdRef.current === user.id) return;
 
     let cancelled = false;
     configurePushNotifications();
@@ -35,6 +37,7 @@ export function usePushNotifications() {
         }
 
         await syncPushTokenForUser(user.id, true);
+        syncedUserIdRef.current = user.id;
       } catch (error) {
         console.warn('[PushNotifications] sync failed:', error);
       }
@@ -47,4 +50,3 @@ export function usePushNotifications() {
     };
   }, [user?.id]);
 }
-

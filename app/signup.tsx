@@ -8,6 +8,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import { Colors, Shadow, Radius, Gradients } from '../constants/theme';
 import FinZeeLogo from '../components/FinZeeLogo';
 import { useAuth } from '../hooks/useAuth';
@@ -15,6 +16,7 @@ import { supabase } from '../services/supabaseClient';
 
 export default function SignUpScreen() {
   const { signUp } = useAuth();
+  const navigation = useNavigation();
   const [name, setName]         = useState('');
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
@@ -25,6 +27,11 @@ export default function SignUpScreen() {
   const [consentAI, setConsentAI]               = useState(false);
   const [consentTerms, setConsentTerms]         = useState(false);
   const [refreshing, setRefreshing]             = useState(false);
+
+  const goBack = () => {
+    if (navigation.canGoBack()) navigation.goBack();
+    else router.replace('/login');
+  };
 
   async function handleSignUp() {
     if (!name.trim() || !email.trim() || !password.trim()) {
@@ -173,7 +180,7 @@ export default function SignUpScreen() {
             </LinearGradient>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.loginLink} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.loginLink} onPress={goBack}>
             <Text style={styles.loginLinkText}>Already have an account? <Text style={{ color: Colors.blue, fontWeight: '700' }}>Sign in</Text></Text>
           </TouchableOpacity>
 

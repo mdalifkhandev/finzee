@@ -7,11 +7,13 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import { Colors, Shadow, Radius, Gradients } from '../constants/theme';
 import FinZeeLogo from '../components/FinZeeLogo';
 import { useAuth } from '../hooks/useAuth';
 
 export default function ForgotPasswordScreen() {
+  const navigation = useNavigation();
   const { resetPassword } = useAuth();
   const [email, setEmail]     = useState('');
   const [loading, setLoading] = useState(false);
@@ -51,7 +53,7 @@ export default function ForgotPasswordScreen() {
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <StatusBar barStyle="light-content" />
       <LinearGradient colors={['#06080f', '#0f172a', '#1a2444']} style={styles.hero}>
-        <TouchableOpacity style={styles.back} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.back} onPress={goBack}>
           <Ionicons name="arrow-back" size={16} color="rgba(255,255,255,0.6)" />
           <Text style={styles.backText}>Back</Text>
         </TouchableOpacity>
@@ -121,3 +123,7 @@ const styles = StyleSheet.create({
   signInLink:   { alignItems: 'center', marginTop: 20 },
   signInText:   { fontSize: 14, color: Colors.mute },
 });
+  const goBack = () => {
+    if (navigation.canGoBack()) navigation.goBack();
+    else router.replace('/login');
+  };

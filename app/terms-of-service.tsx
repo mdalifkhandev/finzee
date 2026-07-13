@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Platform } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Platform, BackHandler } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,12 +8,22 @@ import { Colors, Radius, Shadow } from '../constants/theme';
 const TAB_BAR_SPACING = Platform.OS === 'ios' ? 50 : 30;
 
 export default function TermsOfServiceScreen() {
+  useEffect(() => {
+    const onBackPress = () => {
+      router.replace('/(tabs)/profile');
+      return true;
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, []);
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="#06080f" translucent={false} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <LinearGradient colors={['#06080f', '#0f172a', '#1a2444']} style={styles.hero}>
-          <TouchableOpacity style={styles.backRow} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backRow} onPress={() => router.replace('/(tabs)/profile')}>
             <Ionicons name="arrow-back" size={18} color="rgba(255,255,255,0.9)" />
             <Text style={styles.backText}>Back</Text>
           </TouchableOpacity>

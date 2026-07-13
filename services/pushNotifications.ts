@@ -43,6 +43,11 @@ export async function requestExpoPushToken() {
     return { token: null as string | null, granted: false };
   }
 
+  if (Platform.OS === 'android' && !Constants.expoConfig?.android?.googleServicesFile) {
+    console.warn('[PushNotifications] Android push token skipped: googleServicesFile is not configured.');
+    return { token: null as string | null, granted: false };
+  }
+
   const current = await Notifications.getPermissionsAsync();
   let status = current.status;
 
