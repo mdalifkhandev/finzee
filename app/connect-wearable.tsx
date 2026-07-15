@@ -8,7 +8,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Colors, Shadow, Radius, Gradients } from '../constants/theme';
 import FinZeeLogo from '../components/FinZeeLogo';
 import { useAuth } from '../hooks/useAuth';
-import { requestAppleHealthPermissions, requestAndroidHealthPermissions, getOuraAuthUrl, getGoogleHealthAuthUrl, initiateGarminAuth, getConnectedWearables, disconnectWearable, fetchBestAvailableMetrics, connectGoogleHealthNative } from '../services/wearableService';
+import { requestAppleHealthPermissions, requestAndroidHealthPermissions, getOuraAuthUrl, getGoogleHealthAuthUrl, initiateGarminAuth, getConnectedWearables, disconnectWearable, fetchBestAvailableMetrics, connectGoogleHealthNative, syncHealthDataToSupabase } from '../services/wearableService';
 import { CONFIG } from '../constants/config';
 
 interface Wearable { id: 'apple_health' | 'oura' | 'garmin' | 'google_health' | 'google_fit'; name: string; brand: string; icon: string; description: string; features: string[]; available: boolean; comingSoon?: boolean; }
@@ -128,6 +128,13 @@ export default function ConnectWearableScreen() {
   async function testFetch() {
     if (!user) return;
     setLoad('test', true);
+    
+    // Sync to Supabase
+    const synced = await syncHealthDataToSupabase(user.id);
+    if (synced) {
+      Alert.alert('Success', 'Data synced to Supabase successfully!');
+    }
+    
     const data = await fetchBestAvailableMetrics(user.id, new Date().toISOString().split('T')[0]);
     setTestData(data);
     setLoad('test', false);

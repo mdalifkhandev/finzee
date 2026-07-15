@@ -2,10 +2,29 @@
 import { Tabs } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform } from 'react-native';
+import { Platform, AppState } from 'react-native';
+import { useEffect, useRef } from 'react';
 import { Colors } from '../../constants/theme';
+import { useAuth } from '../../hooks/useAuth';
+import { syncHealthDataToSupabase } from '../../services/wearableService';
 
 export default function TabLayout() {
+  const { user } = useAuth();
+  const appState = useRef(AppState.currentState);
+
+  useEffect(() => {
+    if (user) syncHealthDataToSupabase(user.id);
+
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+        if (user) syncHealthDataToSupabase(user.id);
+      }
+      appState.current = nextAppState;
+    });
+
+    return () => subscription.remove();
+  }, [user]);
+
   return (
     <>
       <StatusBar style="light" backgroundColor={Colors.dark} translucent={false} />

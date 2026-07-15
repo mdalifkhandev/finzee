@@ -236,14 +236,85 @@ export async function fetchGarminMetrics(userId: string, date: string): Promise<
 }
 
 export async function fetchGoogleHealthMetrics(_userId: string, date: string): Promise<WearableMetrics | null> {
+  if (Platform.OS !== 'android') return null;
   const session = await getGoogleHealthSession();
-  if (!session?.access_token) return getMockMetrics(date, 'google_health');
+  if (!session?.access_token) return null;
 
   try {
-    return getMockMetrics(date, 'google_health');
+    const HealthConnect = require('react-native-health-connect');
+    const isInitialized = await HealthConnect.initialize();
+    if (!isInitialized) return null;
+
+    // Use the provided date or today
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(targetDate);
+    endDate.setDate(endDate.getDate() + 1);
+
+    const timeRangeFilter = {
+      operator: 'between',
+      startTime: targetDate.toISOString(),
+      endTime: endDate.toISOString(),
+    };
+
+    // Aggregate Steps
+    let steps = 0;
+    try {
+      const stepsRes = await HealthConnect.aggregateRecord({ recordType: 'Steps', timeRangeFilter });
+      steps = Math.round(stepsRes?.COUNT_TOTAL || 0);
+    } catch (e) { console.warn('Steps fetch error', e); }
+
+    // Aggregate Calories
+    let caloriesBurned = 0;
+    try {
+      const calRes = await HealthConnect.aggregateRecord({ recordType: 'ActiveCaloriesBurned', timeRangeFilter });
+      caloriesBurned = Math.round(calRes?.ACTIVE_CALORIES_TOTAL?.inKilocalories || 0);
+    } catch (e) { console.warn('Calories fetch error', e); }
+
+    // Read Heart Rate
+    let heartRate = 70;
+    let restingHeartRate = 60;
+    try {
+      const hrRes = await HealthConnect.readRecords('HeartRate', { timeRangeFilter });
+      if (hrRes?.records?.length > 0) {
+        const samples = hrRes.records.flatMap((r: any) => r.samples || []);
+        if (samples.length > 0) {
+          const sum = samples.reduce((acc: number, s: any) => acc + s.beatsPerMinute, 0);
+          heartRate = Math.round(sum / samples.length);
+          restingHeartRate = Math.round(samples.reduce((min: number, s: any) => Math.min(min, s.beatsPerMinute), samples[0].beatsPerMinute));
+        }
+      }
+    } catch (e) { console.warn('HR fetch error', e); }
+
+    // Read Sleep
+    let sleepHours = 0;
+    try {
+      const sleepRes = await HealthConnect.readRecords('SleepSession', { timeRangeFilter });
+      if (sleepRes?.records?.length > 0) {
+        const totalMs = sleepRes.records.reduce((sum: number, record: any) => {
+          const start = new Date(record.startTime).getTime();
+          const end = new Date(record.endTime).getTime();
+          return sum + Math.max(0, end - start);
+        }, 0);
+        sleepHours = Math.round((totalMs / (1000 * 60 * 60)) * 10) / 10;
+      }
+    } catch (e) { console.warn('Sleep fetch error', e); }
+
+    const metrics: WearableMetrics = {
+      source: 'google_health',
+      date,
+      steps,
+      sleepHours,
+      heartRate,
+      restingHeartRate,
+      caloriesBurned,
+      stressIndicator: 'low'
+    };
+    metrics.stressIndicator = inferStress(metrics);
+    return metrics;
   } catch (e) {
     console.error('[Google Health] Fetch error:', e);
-    return getMockMetrics(date, 'google_health');
+    return null;
   }
 }
 
@@ -279,5 +350,32 @@ export async function disconnectWearable(source: 'oura' | 'garmin' | 'google_hea
   await SecureStore.deleteItemAsync(KEYS[source]);
 }
 
+export async function syncHealthDataToSupabase(userId: string): Promise<boolean> {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const metrics = await fetchBestAvailableMetrics(userId, today);
+    if (!metrics || metrics.source === 'mock') return false; // skip mock data
+
+    await callFunction('health-metrics', { 
+      method: 'POST', 
+      body: {
+        date: metrics.date,
+        source: metrics.source === 'google_health' ? 'google_fit' : metrics.source,
+        sleep_hours: metrics.sleepHours,
+        steps: metrics.steps,
+        heart_rate: metrics.heartRate,
+        resting_heart_rate: metrics.restingHeartRate,
+        hrv_ms: metrics.hrv,
+        stress_indicator: metrics.stressIndicator,
+        readiness_score: metrics.readinessScore,
+        raw_data: metrics.rawData
+      } 
+    });
+    return true;
+  } catch (e) {
+    console.error('[Sync] Error syncing health data to Supabase:', e);
+    return false;
+  }
+}
 
 

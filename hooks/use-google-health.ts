@@ -84,25 +84,7 @@ async function readSleep(): Promise<number | null> {
   return Math.round((totalMs / (1000 * 60 * 60)) * 10) / 10;
 }
 
-async function readMindfulMinutes(): Promise<number> {
-  const { records } = await HealthConnect.readRecords('MindfulnessSession', {
-    timeRangeFilter: {
-      operator: 'between',
-      startTime: startOfToday().toISOString(),
-      endTime: new Date().toISOString(),
-    },
-  });
 
-  if (!records || records.length === 0) return 0;
-
-  const totalMs = records.reduce((sum: number, record: any) => {
-    const start = new Date(record.startTime).getTime();
-    const end = new Date(record.endTime).getTime();
-    return sum + Math.max(0, end - start);
-  }, 0);
-
-  return Math.round(totalMs / (1000 * 60));
-}
 
 export function useGoogleHealth() {
   const [status, setStatus] = useState<HealthConnectionStatus>(
@@ -115,15 +97,14 @@ export function useGoogleHealth() {
     if (!HealthConnect) return;
 
     try {
-      const [steps, activeEnergyBurned, restingHeartRate, sleepHours, mindfulMinutes] = await Promise.all([
+      const [steps, activeEnergyBurned, restingHeartRate, sleepHours] = await Promise.all([
         readAggregatedSteps(),
         readActiveEnergy(),
         readRestingHeartRate(),
         readSleep(),
-        readMindfulMinutes(),
       ]);
 
-      setSnapshot({ steps, activeEnergyBurned, restingHeartRate, sleepHours, mindfulMinutes });
+      setSnapshot({ steps, activeEnergyBurned, restingHeartRate, sleepHours, mindfulMinutes: 0 });
     } catch (e: any) {
       setError(e?.message || 'Failed to read Health Connect data');
     }
