@@ -9,6 +9,7 @@ import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
 import com.facebook.react.defaults.DefaultReactActivityDelegate
 
+import dev.matinzd.healthconnect.permissions.HealthConnectPermissionDelegate
 import expo.modules.ReactActivityDelegateWrapper
 import dev.matinzd.healthconnect.permissions.HealthConnectPermissionDelegate
 
