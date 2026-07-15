@@ -7,7 +7,8 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Shadow, Radius, Gradients } from '../../constants/theme';
 import { useAuth } from '../../hooks/useAuth';
-import { getDailyMetrics, requestHealthPermissions } from '../../services/healthService';
+import { getDailyMetrics } from '../../services/healthService';
+import { getConnectedWearables } from '../../services/wearableService';
 import type { HealthDailyMetric } from '../../types';
 
 function WellnessRing({ score, size = 80 }: { score: number; size?: number }) {
@@ -59,17 +60,19 @@ const TAB_BAR_SPACING = Platform.OS === 'ios' ? 50 : 30;
 export default function HealthScreen() {
   const { user } = useAuth();
   const [metrics, setMetrics]   = useState<HealthDailyMetric | null>(null);
-  const [permitted, setPermitted] = useState(false);
+  const [connected, setConnected] = useState(false);
+  const [deviceStatus, setDeviceStatus] = useState<any>({});
   const [refreshing, setRefreshing] = useState(false);
 
-  const wellnessScore = metrics
-    ? Math.round((Math.min(metrics.sleepHours / 8, 1) * 30) + (Math.min(metrics.steps / 10000, 1) * 25) + (metrics.stressIndicator === 'low' ? 25 : metrics.stressIndicator === 'moderate' ? 15 : 5) + 20)
-    : 70;
+  const wellnessScore = metrics && (metrics.steps || metrics.sleepHours || metrics.heartRate)
+    ? Math.round((Math.min((metrics.sleepHours || 0) / 8, 1) * 30) + (Math.min((metrics.steps || 0) / 10000, 1) * 25) + (metrics.stressIndicator === 'low' ? 25 : metrics.stressIndicator === 'moderate' ? 15 : 5) + 20)
+    : 0;
 
   useEffect(() => {
     (async () => {
-      const perm = await requestHealthPermissions();
-      setPermitted(perm);
+      const status = await getConnectedWearables();
+      setDeviceStatus(status);
+      setConnected(status.appleHealth || status.oura || status.garmin || status.googleHealth);
       if (user) {
         const m = await getDailyMetrics(user.id, new Date().toISOString().split('T')[0]);
         setMetrics(m);
@@ -80,8 +83,9 @@ export default function HealthScreen() {
   async function handleRefresh() {
     setRefreshing(true);
     try {
-      const perm = await requestHealthPermissions();
-      setPermitted(perm);
+      const status = await getConnectedWearables();
+      setDeviceStatus(status);
+      setConnected(status.appleHealth || status.oura || status.garmin || status.googleHealth);
       if (user) {
         const m = await getDailyMetrics(user.id, new Date().toISOString().split('T')[0]);
         setMetrics(m);
@@ -111,78 +115,70 @@ export default function HealthScreen() {
             </View>
             <WellnessRing score={wellnessScore} size={72} />
           </View>
-          <Text style={styles.wellnessScore}>{wellnessScore}<Text style={{ fontSize: 16, opacity: 0.5 }}>/100</Text></Text>
-          <Text style={styles.wellnessLabel}>{wellnessScore >= 80 ? 'Optimal Wellness' : wellnessScore >= 60 ? 'Moderate Wellness' : 'Low Wellness'}</Text>
-          <Text style={styles.wellnessDesc}>{wellnessScore >= 80 ? 'Your body signals are strong. Low financial risk today.' : 'Sleep and stress indicators suggest elevated spending risk today.'}</Text>
+          <Text style={styles.wellnessScore}>{wellnessScore > 0 ? wellnessScore : '--'}<Text style={{ fontSize: 16, opacity: 0.5 }}>/100</Text></Text>
+          <Text style={styles.wellnessLabel}>{wellnessScore === 0 ? 'No Data Available' : wellnessScore >= 80 ? 'Optimal Wellness' : wellnessScore >= 60 ? 'Moderate Wellness' : 'Low Wellness'}</Text>
+          <Text style={styles.wellnessDesc}>{wellnessScore === 0 ? 'Sync a wearable to see your score.' : wellnessScore >= 80 ? 'Your body signals are strong. Low financial risk today.' : 'Sleep and stress indicators suggest elevated spending risk today.'}</Text>
         </LinearGradient>
 
         <View style={styles.body}>
-          {!permitted && (
-            <TouchableOpacity style={styles.connectBanner} onPress={requestHealthPermissions}>
+          {!connected && (
+            <TouchableOpacity style={styles.connectBanner} onPress={() => router.push('/connect-wearable')}>
               <LinearGradient colors={Gradients.blue} style={styles.connectGrad}>
                 <Text style={styles.connectTitle}>Connect Health Data</Text>
-                <Text style={styles.connectSub}>Enable Apple HealthKit to unlock real-time biometric insights</Text>
-                <Text style={styles.connectBtn}>Enable Now →</Text>
+                <Text style={styles.connectSub}>Connect a wearable device to unlock real-time biometric insights</Text>
+                <Text style={styles.connectBtn}>Connect Now →</Text>
               </LinearGradient>
             </TouchableOpacity>
           )}
 
           <Text style={styles.sectionTitle}>Today's Metrics</Text>
           <View style={styles.metricsGrid}>
-            <MetricCard icon="heart-outline" label="Heart Rate" value={String(metrics?.heartRate ?? 72)} unit="bpm" trend="Normal" trendColor={Colors.amber} bgColor="#fff1f1" iconColor={Colors.red} />
-            <MetricCard icon="moon-outline" label="Sleep" value={String(metrics?.sleepHours ?? 6.2)} unit="hrs" trend="Below target" trendColor={Colors.red} bgColor={Colors.blueTint} iconColor={Colors.blue} />
+            <MetricCard icon="heart-outline" label="Heart Rate" value={metrics?.heartRate ? String(metrics.heartRate) : '--'} unit="bpm" trend="Real-time" trendColor={Colors.amber} bgColor="#fff1f1" iconColor={Colors.red} />
+            <MetricCard icon="moon-outline" label="Sleep" value={metrics?.sleepHours ? String(metrics.sleepHours) : '--'} unit="hrs" trend="Daily" trendColor={Colors.red} bgColor={Colors.blueTint} iconColor={Colors.blue} />
           </View>
           <View style={[styles.metricsGrid, { marginTop: 8 }]}>
-            <MetricCard icon="walk-outline" label="Steps" value={(metrics?.steps ?? 7420).toLocaleString()} unit="" trend="On track" trendColor={Colors.green} bgColor={Colors.greenTint} iconColor={Colors.green} />
-            <MetricCard icon="pulse-outline" label="HRV" value={String(metrics?.restingHeartRate ?? 58)} unit="ms" trend="Average" trendColor={Colors.amber} bgColor={Colors.purpleTint} iconColor={Colors.purple} />
+            <MetricCard icon="walk-outline" label="Steps" value={metrics?.steps ? metrics.steps.toLocaleString() : '--'} unit="" trend="Daily" trendColor={Colors.green} bgColor={Colors.greenTint} iconColor={Colors.green} />
+            <MetricCard icon="pulse-outline" label="Resting HR" value={metrics?.restingHeartRate ? String(metrics.restingHeartRate) : '--'} unit="bpm" trend="Average" trendColor={Colors.amber} bgColor={Colors.purpleTint} iconColor={Colors.purple} />
           </View>
 
-          <View style={[styles.card, { marginTop: 16 }]}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>Stress This Week</Text>
-              <View style={[styles.stressBadge, { backgroundColor: stressColor + '20' }]}><Text style={[styles.stressBadgeText, { color: stressColor }]}>{stressLabel} Today</Text></View>
-            </View>
-            <View style={{ flexDirection: 'row', gap: 5, alignItems: 'flex-end' }}>
-              <StressBar h={22} color={Colors.greenTint} day="Mon" />
-              <StressBar h={52} color="#fecaca" day="Tue" />
-              <StressBar h={18} color={Colors.greenTint} day="Wed" />
-              <StressBar h={38} color="#fde68a" day="Thu" />
-              <StressBar h={16} color={Colors.greenTint} day="Fri" />
-              <StressBar h={30} color="#fde68a" day="Sat" />
-              <StressBar h={8}  color={Colors.bg2} day="Sun" />
-            </View>
-          </View>
-
-          <LinearGradient colors={['#0f172a', '#1e1b4b']} style={styles.corrCard}>
-            <View style={styles.corrChip}><Ionicons name="sparkles-outline" size={11} color="#c4b5fd" /><Text style={styles.corrChipText}>FinZee Intelligence</Text></View>
-            <Text style={styles.corrTitle}>Your body affects your spending</Text>
-            <Text style={styles.corrDesc}>FinZee detected behavioral patterns linking your health signals to financial decisions.</Text>
-            {[
-              { dot: Colors.red,   text: 'You spent $149 on Nike.com on Tuesday — a high-stress day (HR: 78bpm).' },
-              { dot: Colors.amber, text: 'Discretionary spend is 34% higher on nights with under 6 hrs of sleep.' },
-              { dot: Colors.green, text: 'On days with 8k+ steps, your impulse purchases drop by 62%.' },
-            ].map((c, i) => (
-              <View key={i} style={styles.corrRow}>
-                <View style={[styles.corrDot, { backgroundColor: c.dot }]} />
-                <Text style={styles.corrText}>{c.text}</Text>
-              </View>
-            ))}
-          </LinearGradient>
+          <View style={{ height: 24 }} />
 
           <Text style={styles.sectionTitle}>Connected Devices</Text>
-          {[{ name: 'Apple Watch', sub: 'Steps, HR, HRV, Sleep', icon: 'watch-outline' }, { name: 'Oura Ring', sub: 'Deep sleep + recovery', icon: 'ellipse-outline' }, { name: 'Garmin', sub: 'HRV + stress tracking', icon: 'fitness-outline' }, { name: 'Google Health', sub: 'Sleep + activity sync', icon: 'bar-chart-outline' }]
-            .map(d => (
-              <TouchableOpacity key={d.name} style={styles.deviceCard}>
-                <View style={styles.deviceIcon}><Ionicons name={d.icon as any} size={22} color={Colors.blue} /></View>
-                <View style={{ flex: 1 }}><Text style={styles.deviceName}>{d.name}</Text><Text style={styles.deviceSub}>{d.sub}</Text></View>
-                <Text style={{ color: Colors.mute2, fontSize: 18 }}>›</Text>
-              </TouchableOpacity>
-            ))
-          }
+          {deviceStatus?.appleHealth && (
+            <View style={styles.deviceCard}>
+              <View style={styles.deviceIcon}><Ionicons name="watch-outline" size={22} color={Colors.blue} /></View>
+              <View style={{ flex: 1 }}><Text style={styles.deviceName}>Apple Health</Text><Text style={styles.deviceSub}>Steps, Sleep, HR</Text></View>
+              <Ionicons name="checkmark-circle" size={20} color={Colors.green} />
+            </View>
+          )}
+          {deviceStatus?.googleHealth && (
+            <View style={styles.deviceCard}>
+              <View style={styles.deviceIcon}><Ionicons name="bar-chart-outline" size={22} color={Colors.blue} /></View>
+              <View style={{ flex: 1 }}><Text style={styles.deviceName}>Google Health Connect</Text><Text style={styles.deviceSub}>Steps, Sleep, HR</Text></View>
+              <Ionicons name="checkmark-circle" size={20} color={Colors.green} />
+            </View>
+          )}
+          {deviceStatus?.oura && (
+            <View style={styles.deviceCard}>
+              <View style={styles.deviceIcon}><Ionicons name="ellipse-outline" size={22} color={Colors.blue} /></View>
+              <View style={{ flex: 1 }}><Text style={styles.deviceName}>Oura Ring</Text><Text style={styles.deviceSub}>Deep sleep + recovery</Text></View>
+              <Ionicons name="checkmark-circle" size={20} color={Colors.green} />
+            </View>
+          )}
+          {deviceStatus?.garmin && (
+            <View style={styles.deviceCard}>
+              <View style={styles.deviceIcon}><Ionicons name="fitness-outline" size={22} color={Colors.blue} /></View>
+              <View style={{ flex: 1 }}><Text style={styles.deviceName}>Garmin</Text><Text style={styles.deviceSub}>HRV + stress tracking</Text></View>
+              <Ionicons name="checkmark-circle" size={20} color={Colors.green} />
+            </View>
+          )}
+          {!connected && (
+            <Text style={{ color: Colors.mute, fontSize: 13, marginBottom: 16 }}>No devices connected.</Text>
+          )}
 
           <TouchableOpacity style={styles.enableBtn} onPress={() => router.push('/connect-wearable')}>
             <LinearGradient colors={Gradients.blue} style={styles.enableBtnGrad}>
-              <Text style={styles.enableBtnText}>Enable HealthKit Permissions →</Text>
+              <Text style={styles.enableBtnText}>Manage Devices →</Text>
             </LinearGradient>
           </TouchableOpacity>
           <View style={{ height: 32 }} />
