@@ -14,7 +14,7 @@ if (Platform.OS === 'android') {
   }
 }
 
-const RECORD_TYPES = ['Steps', 'ActiveCaloriesBurned', 'HeartRate', 'SleepSession', 'MindfulnessSession'];
+const RECORD_TYPES = ['Steps', 'ActiveCaloriesBurned', 'HeartRate', 'SleepSession'];
 
 function startOfToday() {
   const d = new Date();

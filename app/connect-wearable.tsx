@@ -8,7 +8,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Colors, Shadow, Radius, Gradients } from '../constants/theme';
 import FinZeeLogo from '../components/FinZeeLogo';
 import { useAuth } from '../hooks/useAuth';
-import { requestAppleHealthPermissions, requestAndroidHealthPermissions, getOuraAuthUrl, getGoogleHealthAuthUrl, initiateGarminAuth, getConnectedWearables, disconnectWearable, fetchBestAvailableMetrics } from '../services/wearableService';
+import { requestAppleHealthPermissions, requestAndroidHealthPermissions, getOuraAuthUrl, getGoogleHealthAuthUrl, initiateGarminAuth, getConnectedWearables, disconnectWearable, fetchBestAvailableMetrics, connectGoogleHealthNative } from '../services/wearableService';
 import { CONFIG } from '../constants/config';
 
 interface Wearable { id: 'apple_health' | 'oura' | 'garmin' | 'google_health' | 'google_fit'; name: string; brand: string; icon: string; description: string; features: string[]; available: boolean; comingSoon?: boolean; }
@@ -93,10 +93,20 @@ export default function ConnectWearableScreen() {
           break;
         }
         case 'google_health': {
-          if (CONFIG.DEV_MODE) { setConnected(prev => ({ ...prev, google_health: true })); Alert.alert('Google Health Connected', '[DEV MODE] Simulated. Real OAuth requires EXPO_PUBLIC_GOOGLE_HEALTH_CLIENT_ID.'); }
-          else {
-            const authUrl = await getGoogleHealthAuthUrl('finzeeai://google-health-callback');
-            await Linking.openURL(authUrl);
+          if (Platform.OS === 'android') {
+            try {
+              const success = await connectGoogleHealthNative();
+              if (success) {
+                setConnected(prev => ({ ...prev, google_health: true }));
+                Alert.alert('Google Health Connected', 'FinZee AI can now read your health data.');
+              } else {
+                Alert.alert('Permission Denied', 'Could not get permission for Health Connect.');
+              }
+            } catch (err: any) {
+              Alert.alert('Error', err.message);
+            }
+          } else {
+            Alert.alert('Not Supported', 'Google Health Connect is only available on Android.');
           }
           break;
         }

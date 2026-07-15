@@ -115,6 +115,29 @@ export async function getGoogleHealthAuthUrl(redirectUri: string): Promise<strin
   return GOOGLE_HEALTH_AUTH + '?' + params.toString();
 }
 
+export async function connectGoogleHealthNative(): Promise<boolean> {
+  if (Platform.OS !== 'android') return false;
+  try {
+    const HealthConnect = require('react-native-health-connect');
+    const isInitialized = await HealthConnect.initialize();
+    if (!isInitialized) {
+      throw new Error('Health Connect is not available. Install it from the Play Store.');
+    }
+    const RECORD_TYPES = ['Steps', 'ActiveCaloriesBurned', 'HeartRate', 'SleepSession'];
+    const granted = await HealthConnect.requestPermission(
+      RECORD_TYPES.map((recordType: string) => ({ accessType: 'read', recordType }))
+    );
+    if (granted && granted.length > 0) {
+      await saveJson(KEYS.googleHealth, { access_token: 'native_health_connect' });
+      return true;
+    }
+    return false;
+  } catch (e: any) {
+    throw new Error(e.message || 'Failed to connect Health Connect');
+  }
+}
+
+
 export async function exchangeGoogleHealthCode(code: string, redirectUri: string): Promise<boolean> {
   const clientId = process.env.EXPO_PUBLIC_GOOGLE_HEALTH_CLIENT_ID || process.env.EXPO_PUBLIC_FITBIT_CLIENT_ID || '';
   const codeVerifier = await getToken(KEYS.googleHealthPkce);
