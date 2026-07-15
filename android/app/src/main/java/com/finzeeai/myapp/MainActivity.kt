@@ -11,7 +11,6 @@ import com.facebook.react.defaults.DefaultReactActivityDelegate
 
 import dev.matinzd.healthconnect.permissions.HealthConnectPermissionDelegate
 import expo.modules.ReactActivityDelegateWrapper
-import dev.matinzd.healthconnect.permissions.HealthConnectPermissionDelegate
 
 class MainActivity : ReactActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
