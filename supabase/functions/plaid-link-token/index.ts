@@ -52,5 +52,3 @@ Deno.serve(async (req) => {
   }
 });
 
-// getEnv is imported for parity with sibling functions; referenced to avoid lint noise.
-void getEnv;

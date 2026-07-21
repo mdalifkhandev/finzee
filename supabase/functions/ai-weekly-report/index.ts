@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
       supabase.from("transactions").select("amount, type, ts, categories, merchant").eq("user_id", user.id).gte("ts", weekAgo),
       supabase.from("goals").select("name, target_amount, current_amount").eq("user_id", user.id),
       supabase.from("pause_list_items").select("status, price, created_at").eq("user_id", user.id).gte("created_at", weekAgo),
-      supabase.from("profiles").select("first_name").eq("user_id", user.id).maybeSingle(),
+      supabase.from("profiles").select("first_name, last_name").eq("user_id", user.id).maybeSingle(),
     ]);
 
     if (txRes.error) throw txRes.error;
@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
     const savedByPausing = skipped.reduce((s, p) => s + Number(p.price), 0);
 
     const stats = {
-      first_name: profileRes.data?.first_name ?? "there",
+      first_name: profileRes.data?.first_name || "there",
       week_start: weekAgo,
       total_spent: Math.round(spent),
       total_income: Math.round(income),
@@ -78,6 +78,6 @@ Deno.serve(async (req) => {
 
     return jsonResponse({ report: result.text, stats, model: result.model, provider: result.provider });
   } catch (err) {
-    return jsonResponse({ error: err instanceof Error ? err.message : "Unknown error" }, 500);
+    return jsonResponse({ error: err instanceof Error ? err.message : JSON.stringify(err) || String(err) }, 500);
   }
 });

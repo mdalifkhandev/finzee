@@ -21,6 +21,12 @@ Deno.serve(async (req) => {
 
     if (error) return jsonResponse({ error: error.message }, 500);
 
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("created_at")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
     const items = data ?? [];
     const bought = items.filter((i) => i.status === "bought");
     const skipped = items.filter((i) => i.status === "skipped");
@@ -30,6 +36,8 @@ Deno.serve(async (req) => {
       ? Math.max(...bought.map((i) => new Date(i.decided_at ?? i.created_at).getTime()))
       : items.length
       ? new Date(items[0].created_at).getTime()
+      : profile?.created_at
+      ? new Date(profile.created_at).getTime()
       : Date.now();
 
     const currentStreakDays = Math.max(0, Math.floor((Date.now() - lastBuyTs) / DAY));

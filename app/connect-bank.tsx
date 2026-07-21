@@ -12,6 +12,8 @@ import FinZeeLogo from '../components/FinZeeLogo';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../services/supabaseClient';
 import { CONFIG } from '../constants/config';
+import { createLinkToken } from '../services/plaidClient';
+import { createPlaidLinkSession } from 'react-native-plaid-link-sdk';
 
 const SECURITY_POINTS = [
   { icon: 'lock-closed-outline', text: 'FinZee never sees your bank username or password' },
@@ -39,13 +41,37 @@ export default function ConnectBankScreen() {
   async function handleConnect() {
     if (!user) return;
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1500));
-    if (CONFIG.DEV_MODE) {
-      setConnected(true);
-    } else {
-      Alert.alert('Configuration Required', 'Set EXPO_PUBLIC_API_BASE_URL and configure Plaid on your backend.');
+    try {
+      if (CONFIG.DEV_MODE) {
+        await new Promise(r => setTimeout(r, 1500));
+        setConnected(true);
+        setLoading(false);
+      } else {
+        const { link_token } = await createLinkToken();
+        if (!link_token || link_token.includes('stub')) {
+          Alert.alert('Configuration Required', 'Set PLAID_CLIENT_ID and PLAID_SECRET on your backend to enable real Plaid Link.');
+          setLoading(false);
+          return;
+        }
+
+        const session = await createPlaidLinkSession({
+          token: link_token,
+          onSuccess: (success) => {
+            setConnected(true);
+            setLoading(false);
+            // Optional: send success.metadata.public_token to backend to exchange and store access_token
+          },
+          onExit: (exit) => {
+            setLoading(false);
+          },
+        });
+
+        await session.open(false);
+      }
+    } catch (err: any) {
+      Alert.alert('Connection failed', err.message || 'Unknown error');
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   if (connected) {

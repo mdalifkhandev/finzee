@@ -15,6 +15,7 @@ import { useAuth } from '../hooks/useAuth';
 import { evaluatePurchase } from '../services/insightEngine';
 import { supabase } from '../services/supabaseClient';
 import { CONFIG, DEV_SAMPLE } from '../constants/config';
+import { callFunction } from '../services/api';
 
 type Urgency = 'low' | 'medium' | 'high';
 type Mood    = 'stressed' | 'neutral' | 'happy';
@@ -58,22 +59,58 @@ export default function PurchaseCheckScreen() {
   async function handleEvaluate() {
     if (!itemName.trim() || !price.trim()) { Alert.alert('Missing info', 'Please enter an item name and price.'); return; }
     setLoading(true); setResult(null); setSavedToPause(false);
-    await new Promise(r => setTimeout(r, 800));
-    const evaluation = evaluatePurchase({
+    
+    // Calculate local impacts first
+    const budgetRemaining = DEV_SAMPLE.monthlyBudget * 0.4;
+    const localEval = evaluatePurchase({
       price: parseFloat(price), category: category || 'General', urgency, mood, reason,
-      monthlyBudgetRemaining: DEV_SAMPLE.monthlyBudget * 0.4,
+      monthlyBudgetRemaining: budgetRemaining,
       currentGoalProgress: 0.42,
     });
-    setResult(evaluation);
+
+    let aiRec = localEval.recommendation;
+    let aiMessage = '';
+    let aiReflection = '';
+
+    try {
+      if (CONFIG.DEV_MODE || !CONFIG.API_BASE_URL) {
+        await new Promise(r => setTimeout(r, 800));
+        aiMessage = 'I see you might be acting on impulse. Take a moment to reflect.';
+      } else {
+        const aiResponse = await callFunction<{ message: string; recommendation: string; reflection_question: string }>('ai-impulse-check', {
+          method: 'POST',
+          body: { itemName: itemName.trim(), price: parseFloat(price), category, reason, budgetRemaining }
+        });
+        
+        if (aiResponse.recommendation === 'skip') aiRec = 'pause';
+        else if (aiResponse.recommendation === 'buy') aiRec = 'buy';
+        else if (aiResponse.recommendation === 'pause') aiRec = 'wait';
+        
+        aiMessage = aiResponse.message;
+        aiReflection = aiResponse.reflection_question;
+      }
+    } catch (err) {
+      console.warn('[ImpulseCheck] AI failed, falling back to local.', err);
+    }
+
+    const finalEvaluation = {
+      ...localEval,
+      recommendation: aiRec,
+      aiMessage,
+      aiReflection
+    };
+
+    setResult(finalEvaluation as any);
     setLoading(false);
+
     if (!CONFIG.DEV_MODE && user) {
       await supabase.from('purchase_checks').insert({
         user_id: user.id, item_name: itemName.trim(), price: parseFloat(price),
-        category, urgency, reason, mood_level: mood,
-        recommendation: evaluation.recommendation,
-        budget_impact: evaluation.budgetImpact,
-        goal_impact: evaluation.goalImpact,
-        emotional_risk: evaluation.emotionalRisk,
+        category, urgency, reason, mood_level: mood === 'stressed' ? 1 : mood === 'happy' ? 3 : 2,
+        recommendation: finalEvaluation.recommendation,
+        budget_impact: finalEvaluation.budgetImpact,
+        goal_impact: finalEvaluation.goalImpact,
+        emotional_risk: finalEvaluation.emotionalRisk,
       });
     }
   }
@@ -178,9 +215,10 @@ export default function PurchaseCheckScreen() {
                 <Text style={[styles.recDesc, { color: recConfig.color + 'cc' }]}>{recConfig.desc}</Text>
               </View>
               {[
+                { label: 'AI Message', value: (result as any).aiMessage || result.budgetImpact },
+                { label: 'Reflection', value: (result as any).aiReflection || 'Consider if this aligns with your goals.' },
                 { label: 'Budget Impact',  value: result.budgetImpact },
                 { label: 'Goal Impact',    value: result.goalImpact },
-                { label: 'Health Context', value: 'Sleep was 6.2 hrs last night — impulse risk elevated 34%' },
               ].map(r => (
                 <View key={r.label} style={styles.resultRow}>
                   <Text style={styles.resultRowLabel}>{r.label}</Text>

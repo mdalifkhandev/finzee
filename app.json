@@ -20,6 +20,7 @@
     },
     "android": {
       "package": "com.finzeeai.myapp",
+      "googleServicesFile": "./google-services.json",
       "versionCode": 1,
       "minSdkVersion": 26,
       "permissions": [

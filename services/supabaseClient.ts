@@ -15,7 +15,9 @@
  *   - .env is listed in .gitignore and will not be committed.
  */
 
+import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createClient } from '@supabase/supabase-js';
 import { CONFIG } from '../constants/config';
 
 // ---------------------------------------------------------------------------
@@ -89,11 +91,6 @@ let _supabase: SupabaseClient = createStub();
 
 if (CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY) {
   try {
-    // Static import is preferred in Expo (Metro bundler handles tree-shaking).
-    // If the package is not installed yet, this will throw and fall back to stub.
-    // Run `npx expo install @supabase/supabase-js` to activate the real client.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { createClient } = require('@supabase/supabase-js');
     _supabase = createClient(
       CONFIG.SUPABASE_URL,
       CONFIG.SUPABASE_ANON_KEY,
@@ -112,19 +109,11 @@ if (CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY) {
       console.info('[Supabase] Real client initialised. URL:', CONFIG.SUPABASE_URL);
     }
   } catch (err) {
-    console.warn(
-      '[Supabase] @supabase/supabase-js not installed or failed to initialise.\n' +
-      'Run: npx expo install @supabase/supabase-js\n' +
-      'Using stub client until then.',
-      err
-    );
+    console.warn('[Supabase] Client init failed:', err);
   }
 } else {
   if (__DEV__) {
-    console.warn(
-      '[Supabase] Missing env vars: EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_ANON_KEY.\n' +
-      'Copy .env.example to .env and fill in your Supabase project credentials.'
-    );
+    console.warn('[Supabase] Missing env vars: EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_ANON_KEY.');
   }
 }
 
