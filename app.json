@@ -16,7 +16,13 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.finzeeai.myapp",
-      "buildNumber": "1"
+      "buildNumber": "1",
+      "runtimeVersion": {
+        "policy": "appVersion"
+      },
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.finzeeai.myapp",
@@ -28,11 +34,17 @@
         "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
         "android.permission.health.READ_HEART_RATE",
         "android.permission.health.READ_SLEEP",
+        "android.permission.health.READ_MINDFULNESS",
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
+        "android.permission.health.READ_HEART_RATE",
+        "android.permission.health.READ_SLEEP",
         "android.permission.health.READ_MINDFULNESS"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#06080f"
-      }
+      },
+      "runtimeVersion": "1.0.0"
     },
     "androidStatusBar": {
       "backgroundColor": "#06080f",
@@ -61,6 +73,10 @@
       "eas": {
         "projectId": "cc6b788c-3ba1-41c0-8cea-5ba6fcc4913d"
       }
+    },
+    "owner": "jaymelvin",
+    "updates": {
+      "url": "https://u.expo.dev/cc6b788c-3ba1-41c0-8cea-5ba6fcc4913d"
     }
   }
 }

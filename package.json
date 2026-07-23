@@ -9,6 +9,16 @@
     "web": "expo start --web",
     "lint": "expo lint"
   },
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": [
+          "react-native-health",
+          "react-native-plaid-link-sdk"
+        ]
+      }
+    }
+  },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.1.2",
     "@react-navigation/native": "^7.0.14",
@@ -24,6 +34,7 @@
     "expo-secure-store": "~14.2.4",
     "expo-splash-screen": "~0.30.10",
     "expo-status-bar": "~2.2.3",
+    "expo-updates": "~0.28.18",
     "react": "19.0.0",
     "react-native": "0.79.6",
     "react-native-health": "^1.19.0",
